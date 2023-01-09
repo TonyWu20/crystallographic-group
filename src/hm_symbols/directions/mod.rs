@@ -1,49 +1,32 @@
-/// Define valid directions for crystal systems and space group.
+use crate::{
+    CrystalSystem, Cubic, Hexagonal, Monoclinic, Orthorhombic, Tetragonal, Triclinic, Trigonal,
+};
 
-/// Marker trait to mark a direction.
 pub trait Direction {}
 
-/// Mark the direction as a valid primary direction
 pub trait Primary: Direction {}
-/// Mark the direction as a valid secondary direction
 pub trait Secondary: Direction {}
-/// Mark the direction as a valid tertiary direction
 pub trait Tertiary: Direction {}
 
-/// For `triclinic` system.
-pub struct None;
-impl Direction for None {}
-impl Primary for None {}
-impl Secondary for None {}
-impl Tertiary for None {}
+pub struct D<const H: i8, const K: i8, const L: i8>;
 
-/// [100]
-pub struct D100;
-pub type X = D100;
-impl Direction for D100 {}
-impl Primary for D100 {}
-impl Secondary for D100 {}
-/// [010]
-pub struct D010;
-pub type Y = D010;
-impl Direction for D010 {}
-impl Primary for D010 {}
-impl Secondary for D010 {}
-/// [001]
-pub struct D001;
-pub type Z = D001;
-impl Direction for D001 {}
-impl Primary for D001 {}
-impl Tertiary for D001 {}
-/// [110]
-pub struct D110;
-impl Direction for D110 {}
-impl Tertiary for D110 {}
-/// [1-10]
-pub struct D1M10;
-impl Direction for D1M10 {}
-impl Tertiary for D1M10 {}
-/// [111]
-pub struct D111;
-impl Direction for D111 {}
-impl Secondary for D111 {}
+impl<const H: i8, const K: i8, const L: i8> CrystalSystem for D<H, K, L> {}
+
+macro_rules! impl_for_dir {
+    ($t:ty, $($trait: ty),*) => {
+        $(impl $trait for $t {})*
+    };
+}
+
+// This represents "None", for triclinic system.
+impl_for_dir!(D<0, 0, 0>, Direction, Primary, Triclinic);
+// [010] - The axis parallel or plane perpendicular to `b`, or y-axis
+impl_for_dir!(D<0,1,0>, Direction, Primary, Secondary,Monoclinic, Cubic,Orthorhombic,Tetragonal,Hexagonal,Trigonal);
+// [001] - The axis parallel or plane perpendicular to `c`, or z-axis
+impl_for_dir!(D<0,0,1>, Direction, Primary, Tertiary, Tetragonal, Hexagonal, Trigonal, Cubic,Orthorhombic);
+// [100] - The axis parallel or plane perpendicular to `a`, or x-axis
+impl_for_dir!(D<1,0,0>, Direction, Primary, Orthorhombic, Cubic, Secondary, Tetragonal,Hexagonal,Trigonal);
+// [110] - The axis parallel or plane perpendicular to the line running at 45 degrees to the `a` and `b` axis.
+impl_for_dir!(D<1,1,0>, Direction, Tertiary, Tetragonal, Cubic);
+impl_for_dir!(D<1,-1,0>, Direction, Tertiary, Hexagonal, Trigonal);
+impl_for_dir!(D<1,2,0>, Direction, Tertiary, Hexagonal, Trigonal);
