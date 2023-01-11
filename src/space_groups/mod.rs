@@ -28,6 +28,59 @@ pub struct HexAxis;
 impl RhombohedralCenter for RbAxis {}
 impl RhombohedralCenter for HexAxis {}
 
+// /// Letter-H-M Symbol-Space group id
+// /// The space group symbol.
+// pub struct SpaceGroup<C, T, U, V, D1, D2, D3, const N: usize>
+// where
+//     C: SpaceGroupProperties,
+//     T: Notation,
+//     U: Notation,
+//     V: Notation,
+//     D1: Primary,
+//     D2: Secondary,
+//     D3: Tertiary,
+// {
+//     letter: C,
+//     symbol: HMSymbol<T, U, V, D1, D2, D3>,
+// }
+//
+// pub trait Generators {
+//     fn generators(&self) -> Vec<Matrix3<i32>>;
+// }
+//
+// impl<C, T, U, V, D1, D2, D3, const N: usize> SpaceGroup<C, T, U, V, D1, D2, D3, N>
+// where
+//     C: SpaceGroupProperties + SpaceGroupProperties<Item = C>,
+//     T: Notation,
+//     U: Notation,
+//     V: Notation,
+//     D1: Primary,
+//     D2: Secondary,
+//     D3: Tertiary,
+// {
+//     pub fn new() -> Self {
+//         Self {
+//             letter: C::new(),
+//             symbol: HMSymbol::new(),
+//         }
+//     }
+// }
+//
+// impl<C, T, U, V, D1, D2, D3, const N: usize> Display for SpaceGroup<C, T, U, V, D1, D2, D3, N>
+// where
+//     C: SpaceGroupProperties,
+//     T: Notation,
+//     U: Notation,
+//     V: Notation,
+//     D1: Primary,
+//     D2: Secondary,
+//     D3: Tertiary,
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{}:{}{}", N, self.letter, self.symbol)
+//     }
+// }
+
 pub trait SpaceGroupProperties: Display {
     type Item;
     fn new() -> Self::Item;
