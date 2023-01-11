@@ -65,41 +65,44 @@ impl<T: Basis, U: Axis> D<T, U> {
 pub struct DirectionBuilder<U: Basis>(PhantomData<U>);
 
 impl<U: Basis> DirectionBuilder<U> {
-    pub fn zero() -> D<U, Universal> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+    pub fn zero(&self) -> D<U, Universal> {
         D::new([0, 0, 0])
     }
 }
 
 /// Directions available in the standard coodinate system
 impl DirectionBuilder<Standard> {
-    pub fn a() -> D<Standard, Principal> {
+    pub fn a(&self) -> D<Standard, Principal> {
         D::new([1, 0, 0])
     }
-    pub fn b() -> D<Standard, Principal> {
+    pub fn b(&self) -> D<Standard, Principal> {
         D::new([0, 1, 0])
     }
-    pub fn c() -> D<Standard, Principal> {
+    pub fn c(&self) -> D<Standard, Principal> {
         D::new([0, 0, 1])
     }
-    pub fn cubic_diagonal() -> D<Standard, BodyDiagonal> {
+    pub fn cubic_diagonal(&self) -> D<Standard, BodyDiagonal> {
         D::new([1, 1, 1])
     }
-    pub fn ab() -> D<Standard, FaceDiagonal> {
+    pub fn ab(&self) -> D<Standard, FaceDiagonal> {
         D::new([1, 1, 0])
     }
 }
 /// Directions available in the hex-basis coordinate system.
 impl DirectionBuilder<HexBasis> {
-    pub fn a() -> D<HexBasis, Principal> {
+    pub fn a(&self) -> D<HexBasis, Principal> {
         D::new([1, 0, 0])
     }
-    pub fn b() -> D<HexBasis, Principal> {
+    pub fn b(&self) -> D<HexBasis, Principal> {
         D::new([0, 1, 0])
     }
-    pub fn c() -> D<HexBasis, Principal> {
+    pub fn c(&self) -> D<HexBasis, Principal> {
         D::new([0, 0, 1])
     }
-    pub fn ab() -> D<HexBasis, FaceDiagonal> {
+    pub fn ab(&self) -> D<HexBasis, FaceDiagonal> {
         D::new([1, 1, 0])
     }
 }

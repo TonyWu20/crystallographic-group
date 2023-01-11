@@ -27,33 +27,33 @@ pub struct CyclicGroup<T: Basis, U: Axis> {
 /// # Generics
 /// - `const N`: `u8` - the operation symbol
 /// - `T`: Basis - mark the coordinate basis system.
-pub struct GroupGenerator<T: Basis, const N: i8>(PhantomData<T>);
+pub struct GroupBuilder<T: Basis, const N: i8>(PhantomData<T>);
 
-impl<T: Basis, const N: i8> GroupGenerator<T, N> {
+impl<T: Basis, const N: i8> GroupBuilder<T, N> {
     pub fn new() -> Self {
         Self(PhantomData)
     }
 }
 
 /// The operation E, identity for both basis.
-impl<T: Basis> GroupGenerator<T, 1> {
+impl<T: Basis> GroupBuilder<T, 1> {
     pub fn e(&self) -> CyclicGroup<T, Universal> {
         CyclicGroup {
             generator: Matrix3::identity(),
             order: 1,
-            direction: DirectionBuilder::zero(),
+            direction: DirectionBuilder::new().zero(),
             basis: PhantomData,
         }
     }
 }
 
 /// The operation I, inversion for both basis.
-impl<T: Basis> GroupGenerator<T, -1> {
+impl<T: Basis> GroupBuilder<T, -1> {
     pub fn i(&self) -> CyclicGroup<T, Universal> {
         CyclicGroup {
             generator: Matrix3::from_diagonal_element(-1),
             order: 1,
-            direction: DirectionBuilder::zero(),
+            direction: DirectionBuilder::new().zero(),
             basis: PhantomData,
         }
     }
@@ -92,34 +92,31 @@ impl<T: Basis, U: RealAxis> Mul<CyclicGroup<T, U>> for CyclicGroup<T, Universal>
 
 #[cfg(test)]
 mod test {
-    use std::{
-        f64::consts::{FRAC_PI_2, FRAC_PI_3},
-        marker::PhantomData,
-    };
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_3};
 
     use nalgebra::{Matrix3, Rotation3, Unit, Vector3};
 
     use crate::{crystal_symmetry_directions::DirectionBuilder, HexBasis, Standard};
 
-    use super::GroupGenerator;
+    use super::GroupBuilder;
 
     #[test]
     fn test_rot_generator() {
-        let z_axis = DirectionBuilder::<HexBasis>::c();
-        let ab = DirectionBuilder::<HexBasis>::ab();
-        let r3_001 = GroupGenerator::<HexBasis, 3>::new().c3(&z_axis);
-        let r2_ab = GroupGenerator::<HexBasis, 2>::new().m2(&ab);
-        let r_i = GroupGenerator::<HexBasis, -1>::new().i();
+        let z_axis = DirectionBuilder::<HexBasis>::new().c();
+        let ab = DirectionBuilder::<HexBasis>::new().ab();
+        let r3_001 = GroupBuilder::<HexBasis, 3>::new().c3(&z_axis);
+        let r2_ab = GroupBuilder::<HexBasis, 2>::new().m2(&ab);
+        let r_i = GroupBuilder::<HexBasis, -1>::new().i();
         let ri3_001 = r_i * r3_001;
-        let z_axis = DirectionBuilder::<Standard>::c();
-        let r2_z = GroupGenerator::<Standard, 2>::new().c2(&z_axis);
-        let standard_ab = DirectionBuilder::<Standard>::ab();
-        let r2_s_ab = GroupGenerator::<Standard, 2>::new().c2(&standard_ab);
-        let axis_111 = DirectionBuilder::<Standard>::cubic_diagonal();
-        let axis_010 = DirectionBuilder::<Standard>::b();
-        let r3_111 = GroupGenerator::<Standard, 3>::new().c3(&axis_111);
-        let r4_010 = GroupGenerator::<Standard, 4>::new().c4(&z_axis);
-        let r2_010 = GroupGenerator::<Standard, 2>::new().c2(&axis_010);
+        let z_axis = DirectionBuilder::<Standard>::new().c();
+        let r2_z = GroupBuilder::<Standard, 2>::new().c2(&z_axis);
+        let standard_ab = DirectionBuilder::<Standard>::new().ab();
+        let r2_s_ab = GroupBuilder::<Standard, 2>::new().c2(&standard_ab);
+        let axis_111 = DirectionBuilder::<Standard>::new().cubic_diagonal();
+        let axis_010 = DirectionBuilder::<Standard>::new().b();
+        let r3_111 = GroupBuilder::<Standard, 3>::new().c3(&axis_111);
+        let r4_010 = GroupBuilder::<Standard, 4>::new().c4(&z_axis);
+        let r2_010 = GroupBuilder::<Standard, 2>::new().c2(&axis_010);
         println!("Hexagonal basis");
         println!(
             "{}, {}, {}",

@@ -10,9 +10,9 @@ use crate::{
     HexBasis,
 };
 
-use super::{CyclicGroup, GroupGenerator};
+use super::{CyclicGroup, GroupBuilder};
 
-impl<const N: i8> GroupGenerator<HexBasis, N> {
+impl<const N: i8> GroupBuilder<HexBasis, N> {
     fn hexagonal_basis() -> Matrix3<f64> {
         let theta: f64 = FRAC_PI_3 * 2_f64;
         let sin = theta.sin();
@@ -31,7 +31,7 @@ impl<const N: i8> GroupGenerator<HexBasis, N> {
     }
 }
 
-impl GroupGenerator<HexBasis, 3> {
+impl GroupBuilder<HexBasis, 3> {
     pub fn c3(&self, direction: &D<HexBasis, Principal>) -> CyclicGroup<HexBasis, Principal> {
         CyclicGroup {
             generator: Self::matrix(direction),
@@ -42,7 +42,7 @@ impl GroupGenerator<HexBasis, 3> {
     }
 }
 
-impl GroupGenerator<HexBasis, 6> {
+impl GroupBuilder<HexBasis, 6> {
     pub fn c6(&self, direction: &D<HexBasis, Principal>) -> CyclicGroup<HexBasis, Principal> {
         CyclicGroup {
             generator: Self::matrix(direction),
@@ -53,7 +53,7 @@ impl GroupGenerator<HexBasis, 6> {
     }
 }
 
-impl GroupGenerator<HexBasis, 2> {
+impl GroupBuilder<HexBasis, 2> {
     pub fn m2(&self, direction: &D<HexBasis, FaceDiagonal>) -> CyclicGroup<HexBasis, FaceDiagonal> {
         CyclicGroup {
             generator: Matrix3::new(0, 1, 0, 1, 0, 0, 0, 0, -1),

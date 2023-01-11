@@ -7,9 +7,9 @@ use crate::{
     Standard,
 };
 
-use super::{CyclicGroup, GroupGenerator};
+use super::{CyclicGroup, GroupBuilder};
 
-impl<const N: i8> GroupGenerator<Standard, N> {
+impl<const N: i8> GroupBuilder<Standard, N> {
     fn matrix<U: RealAxis>(direction: &D<Standard, U>) -> Matrix3<i8> {
         let angle = 2_f64 * PI / N as f64;
         let [x, y, z] = direction.hkl();
@@ -19,7 +19,7 @@ impl<const N: i8> GroupGenerator<Standard, N> {
     }
 }
 
-impl GroupGenerator<Standard, 2> {
+impl GroupBuilder<Standard, 2> {
     pub fn c2<U: RealAxis>(&self, direction: &D<Standard, U>) -> CyclicGroup<Standard, U> {
         CyclicGroup {
             generator: Self::matrix(direction),
@@ -30,7 +30,7 @@ impl GroupGenerator<Standard, 2> {
     }
 }
 
-impl GroupGenerator<Standard, 4> {
+impl GroupBuilder<Standard, 4> {
     pub fn c4(&self, direction: &D<Standard, Principal>) -> CyclicGroup<Standard, Principal> {
         CyclicGroup {
             generator: Self::matrix(direction),
@@ -41,7 +41,7 @@ impl GroupGenerator<Standard, 4> {
     }
 }
 
-impl GroupGenerator<Standard, 3> {
+impl GroupBuilder<Standard, 3> {
     pub fn c3(&self, direction: &D<Standard, BodyDiagonal>) -> CyclicGroup<Standard, BodyDiagonal> {
         CyclicGroup {
             generator: Self::matrix(direction),
