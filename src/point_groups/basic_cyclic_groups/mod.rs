@@ -1,9 +1,9 @@
-use std::{marker::PhantomData, ops::Mul};
+use std::marker::PhantomData;
 
 use nalgebra::Matrix3;
 
 use crate::{
-    crystal_symmetry_directions::{Axis, DirectionBuilder, RealAxis, Universal, D},
+    crystal_symmetry_directions::{Axis, DirectionBuilder, Universal, D},
     Basis,
 };
 
@@ -17,10 +17,17 @@ pub struct CyclicGroup<T: Basis, U: Axis> {
     generator: Matrix3<i8>,
     /// Order of the group
     order: u8,
+    symbol: i8,
     /// Symmetry Direction
     direction: D<T, U>,
     /// Basis of coordinates
     basis: PhantomData<T>,
+}
+
+impl<T: Basis, U: Axis> CyclicGroup<T, U> {
+    pub fn iter(&self) -> CyclicGroupIter<T, U> {
+        CyclicGroupIter::new(self)
+    }
 }
 
 /// The builder struct to limit the scope of valid crystallographic cyclic group
@@ -41,6 +48,7 @@ impl<T: Basis> GroupBuilder<T, 1> {
         CyclicGroup {
             generator: Matrix3::identity(),
             order: 1,
+            symbol: 1,
             direction: DirectionBuilder::new().zero(),
             basis: PhantomData,
         }
@@ -52,33 +60,58 @@ impl<T: Basis> GroupBuilder<T, -1> {
     pub fn i(&self) -> CyclicGroup<T, Universal> {
         CyclicGroup {
             generator: Matrix3::from_diagonal_element(-1),
-            order: 1,
+            order: 2,
+            symbol: -1,
             direction: DirectionBuilder::new().zero(),
             basis: PhantomData,
         }
     }
 }
 
-/// Multiply with E or I.
-impl<T: Basis, U: RealAxis> Mul<CyclicGroup<T, Universal>> for CyclicGroup<T, U> {
-    type Output = Self;
+impl<'a, T: Basis, U: Axis> IntoIterator for &'a CyclicGroup<T, U> {
+    type Item = Matrix3<i8>;
 
-    fn mul(self, rhs: CyclicGroup<T, Universal>) -> Self::Output {
-        let new_generator = rhs.generator * self.generator;
+    type IntoIter = CyclicGroupIter<'a, T, U>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+pub struct CyclicGroupIter<'a, T: Basis, U: Axis> {
+    curr_element: Matrix3<i8>,
+    group: &'a CyclicGroup<T, U>,
+    count: u8,
+}
+
+impl<'a, T: Basis, U: Axis> CyclicGroupIter<'a, T, U> {
+    fn new(group: &'a CyclicGroup<T, U>) -> Self {
         Self {
-            generator: new_generator,
-            order: self.order,
-            direction: self.direction,
-            basis: PhantomData,
+            curr_element: Matrix3::identity(),
+            group,
+            count: 0,
         }
     }
 }
 
-impl<T: Basis, U: RealAxis> Mul<CyclicGroup<T, U>> for CyclicGroup<T, Universal> {
-    type Output = CyclicGroup<T, U>;
+impl<'a, T: Basis, U: Axis> Iterator for CyclicGroupIter<'a, T, U> {
+    type Item = Matrix3<i8>;
 
-    fn mul(self, rhs: CyclicGroup<T, U>) -> Self::Output {
-        rhs * self
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count < self.group.order {
+            let res = self.curr_element;
+            self.count += 1;
+            self.curr_element *= self.group.generator;
+            Some(res)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, T: Basis, U: Axis> ExactSizeIterator for CyclicGroupIter<'a, T, U> {
+    fn len(&self) -> usize {
+        (self.group.order - self.count) as usize
     }
 }
 
@@ -92,9 +125,8 @@ impl<T: Basis, U: RealAxis> Mul<CyclicGroup<T, U>> for CyclicGroup<T, Universal>
 
 #[cfg(test)]
 mod test {
-    use std::f64::consts::{FRAC_PI_2, FRAC_PI_3};
 
-    use nalgebra::{Matrix3, Rotation3, Unit, Vector3};
+    use nalgebra::{Matrix3, Vector3};
 
     use crate::{crystal_symmetry_directions::DirectionBuilder, HexBasis, Standard};
 
@@ -105,9 +137,7 @@ mod test {
         let z_axis = DirectionBuilder::<HexBasis>::new().c();
         let ab = DirectionBuilder::<HexBasis>::new().ab();
         let r3_001 = GroupBuilder::<HexBasis, 3>::new().c3(&z_axis);
-        let r2_ab = GroupBuilder::<HexBasis, 2>::new().m2(&ab);
-        let r_i = GroupBuilder::<HexBasis, -1>::new().i();
-        let ri3_001 = r_i * r3_001;
+        let r2_ab = GroupBuilder::<HexBasis, 2>::new().c2(&ab);
         let z_axis = DirectionBuilder::<Standard>::new().c();
         let r2_z = GroupBuilder::<Standard, 2>::new().c2(&z_axis);
         let standard_ab = DirectionBuilder::<Standard>::new().ab();
@@ -118,10 +148,7 @@ mod test {
         let r4_010 = GroupBuilder::<Standard, 4>::new().c4(&z_axis);
         let r2_010 = GroupBuilder::<Standard, 2>::new().c2(&axis_010);
         println!("Hexagonal basis");
-        println!(
-            "{}, {}, {}",
-            r3_001.generator, ri3_001.generator, r2_ab.generator
-        );
+        println!("{}, {}", r3_001.generator, r2_ab.generator);
         println!("Standard basis");
         println!("{}", r2_z.generator);
         println!("{}", r2_s_ab.generator);
@@ -140,16 +167,20 @@ mod test {
         );
     }
     #[test]
-    fn test_rh() {
-        let theta = 2_f64 * FRAC_PI_3;
-        let cos = theta.cos();
-        let sin = theta.sin();
-        let rh_b = Matrix3::new(-cos, -sin, 0.0, -cos, sin, 0.0, 0.0, 0.0, 1.0);
-        let rh_bi = rh_b.try_inverse().unwrap();
-        let axis = Unit::new_normalize(rh_b * Vector3::new(2.0, 1.0, 0.0));
-        let angle = FRAC_PI_2;
-        let rot = Rotation3::from_axis_angle(&axis, angle);
-        let rh_rot = rh_bi * rot.matrix();
-        println!("{}", rh_rot);
+    fn test_iter() {
+        let axis_h001 = DirectionBuilder::<HexBasis>::new().c();
+        let r6_h001 = GroupBuilder::<HexBasis, 6>::new().c6(&axis_h001);
+        r6_h001.into_iter().for_each(|m| println!("{}", m));
+        let m_010: Vec<Matrix3<i8>> = GroupBuilder::<Standard, -2>::new()
+            .m(&DirectionBuilder::<Standard>::new().b())
+            .iter()
+            .collect();
+        println!("{:?}", m_010);
+    }
+    #[test]
+    fn find_axis() {
+        let r3_111 = GroupBuilder::<Standard, 3>::new()
+            .c3(&DirectionBuilder::<Standard>::new().cubic_diagonal());
+        let m = &r3_111.generator;
     }
 }

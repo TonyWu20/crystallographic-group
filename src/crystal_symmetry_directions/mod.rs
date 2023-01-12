@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use nalgebra::{Unit, UnitVector3, Vector3};
+
 use crate::{Basis, HexBasis, Standard};
 
 /// Basis trait of an axis
@@ -58,6 +60,10 @@ impl<T: Basis, U: Axis> D<T, U> {
     pub fn hkl(&self) -> [i8; 3] {
         self.hkl
     }
+    pub fn axis(&self) -> UnitVector3<f64> {
+        let [x, y, z] = self.hkl();
+        Unit::new_normalize(Vector3::new(x as f64, y as f64, z as f64))
+    }
 }
 
 /// Builder struct to limit the generation results to
@@ -87,8 +93,13 @@ impl DirectionBuilder<Standard> {
     pub fn cubic_diagonal(&self) -> D<Standard, BodyDiagonal> {
         D::new([1, 1, 1])
     }
+    /// [110]
     pub fn ab(&self) -> D<Standard, FaceDiagonal> {
         D::new([1, 1, 0])
+    }
+    /// [1-10]
+    pub fn a_b(&self) -> D<Standard, FaceDiagonal> {
+        D::new([1, -1, 0])
     }
 }
 /// Directions available in the hex-basis coordinate system.

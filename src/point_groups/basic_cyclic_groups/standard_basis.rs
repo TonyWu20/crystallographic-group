@@ -24,6 +24,22 @@ impl GroupBuilder<Standard, 2> {
         CyclicGroup {
             generator: Self::matrix(direction),
             order: 2,
+            symbol: 2,
+            direction: *direction,
+            basis: PhantomData,
+        }
+    }
+}
+
+impl GroupBuilder<Standard, -2> {
+    pub fn m<U: RealAxis>(&self, direction: &D<Standard, U>) -> CyclicGroup<Standard, U> {
+        let c2 = GroupBuilder::<Standard, 2>::new().c2(direction);
+        let i = GroupBuilder::<Standard, -1>::new().i();
+        let reflected = c2.generator * i.generator;
+        CyclicGroup {
+            generator: reflected,
+            order: 2,
+            symbol: -2,
             direction: *direction,
             basis: PhantomData,
         }
@@ -35,6 +51,21 @@ impl GroupBuilder<Standard, 4> {
         CyclicGroup {
             generator: Self::matrix(direction),
             order: 4,
+            symbol: 4,
+            direction: *direction,
+            basis: PhantomData,
+        }
+    }
+}
+
+impl GroupBuilder<Standard, -4> {
+    pub fn i4(&self, direction: &D<Standard, Principal>) -> CyclicGroup<Standard, Principal> {
+        let c4 = GroupBuilder::<Standard, 4>::new().c4(direction);
+        let i = GroupBuilder::<Standard, -1>::new().i();
+        CyclicGroup {
+            generator: c4.generator * i.generator,
+            order: 4,
+            symbol: -4,
             direction: *direction,
             basis: PhantomData,
         }
@@ -46,6 +77,21 @@ impl GroupBuilder<Standard, 3> {
         CyclicGroup {
             generator: Self::matrix(direction),
             order: 3,
+            symbol: 3,
+            direction: *direction,
+            basis: PhantomData,
+        }
+    }
+}
+
+impl GroupBuilder<Standard, -3> {
+    pub fn i3(&self, direction: &D<Standard, BodyDiagonal>) -> CyclicGroup<Standard, BodyDiagonal> {
+        let c3 = GroupBuilder::<Standard, 3>::new().c3(direction);
+        let i = GroupBuilder::<Standard, -1>::new().i();
+        CyclicGroup {
+            generator: c3.generator * i.generator,
+            order: 3,
+            symbol: -3,
             direction: *direction,
             basis: PhantomData,
         }
