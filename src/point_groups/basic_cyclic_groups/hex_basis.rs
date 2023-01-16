@@ -3,11 +3,11 @@ use std::{
     marker::PhantomData,
 };
 
-use nalgebra::{Matrix3, Rotation3, Unit, Vector3};
+use nalgebra::{Matrix3, Matrix4, Rotation3};
 
 use crate::{
-    crystal_symmetry_directions::{FaceDiagonal, Principal, D},
-    HexBasis,
+    crystal_symmetry_directions::{DirectionBuilder, FaceDiagonal, Principal, D},
+    HexBasis, Standard,
 };
 
 use super::{CyclicGroup, GroupBuilder};
@@ -23,18 +23,22 @@ impl<const N: i8> GroupBuilder<HexBasis, N> {
     }
     /// The matrix form of the given n-fold rotation at given direction.
     /// The accept direction is `HexBasis` and Principal` only.
-    fn matrix(direction: &D<HexBasis, Principal>) -> Matrix3<i8> {
-        let angle = 2_f64 * PI / N as f64;
-        let [x, y, z] = direction.hkl();
-        let axis = Unit::new_normalize(Vector3::new(x as f64, y as f64, z as f64));
-        let generator = Rotation3::from_axis_angle(&axis, angle);
+    fn hex_rotation_matrix(direction: &D<HexBasis, Principal>) -> Matrix4<f64> {
+        let generator = Self::rotation_matrix(direction);
         // The transformed coordinate basis
         let basis = Self::hexagonal_basis();
         // Inversion of the basis matrix
         let basis_i = basis.try_inverse().unwrap();
         // Convert the rotation matrix to entries of integer +1, -1, 0 only.
-        let hex_gen = basis_i * generator.matrix() * basis;
-        hex_gen.map(|i| i.round() as i8)
+        let hex_gen = basis_i * generator * basis;
+        hex_gen.map(|i| i.round()).to_homogeneous()
+    }
+    /// Original matrix in cartesian basis.
+    fn rotation_matrix(direction: &D<HexBasis, Principal>) -> Matrix3<f64> {
+        let angle = 2_f64 * PI / N as f64;
+        let axis = direction.axis();
+        let generator = Rotation3::from_axis_angle(&axis, angle);
+        *generator.matrix()
     }
 }
 
@@ -42,7 +46,7 @@ impl GroupBuilder<HexBasis, 3> {
     /// The 3 group generator.
     pub fn c3(&self, direction: &D<HexBasis, Principal>) -> CyclicGroup<HexBasis, Principal> {
         CyclicGroup {
-            generator: Self::matrix(direction),
+            matrix: Self::hex_rotation_matrix(direction),
             order: 3,
             symbol: 3,
             direction: *direction,
@@ -57,7 +61,7 @@ impl GroupBuilder<HexBasis, -3> {
         let c3 = GroupBuilder::<HexBasis, 3>::new().c3(direction);
         let i = GroupBuilder::<HexBasis, -1>::new().i();
         CyclicGroup {
-            generator: c3.generator * i.generator,
+            matrix: c3.matrix * i.matrix,
             order: 3,
             symbol: -3,
             direction: *direction,
@@ -70,7 +74,7 @@ impl GroupBuilder<HexBasis, 6> {
     /// The 6 group generator.
     pub fn c6(&self, direction: &D<HexBasis, Principal>) -> CyclicGroup<HexBasis, Principal> {
         CyclicGroup {
-            generator: Self::matrix(direction),
+            matrix: Self::hex_rotation_matrix(direction),
             order: 6,
             symbol: 6,
             direction: *direction,
@@ -86,7 +90,7 @@ impl GroupBuilder<HexBasis, -6> {
         let i = GroupBuilder::<HexBasis, -1>::new().i();
 
         CyclicGroup {
-            generator: c6.generator * i.generator,
+            matrix: c6.matrix * i.matrix,
             order: 6,
             symbol: -6,
             direction: *direction,
@@ -97,9 +101,53 @@ impl GroupBuilder<HexBasis, -6> {
 
 impl GroupBuilder<HexBasis, 2> {
     /// The 2 group generator.
-    pub fn c2(&self, direction: &D<HexBasis, FaceDiagonal>) -> CyclicGroup<HexBasis, FaceDiagonal> {
+    pub fn c2_principal(
+        &self,
+        direction: &D<HexBasis, Principal>,
+    ) -> CyclicGroup<HexBasis, Principal> {
+        let c2 = Self::rotation_matrix(direction)
+            .map(|i| i.round())
+            .to_homogeneous();
         CyclicGroup {
-            generator: Matrix3::new(0, 1, 0, 1, 0, 0, 0, 0, -1),
+            matrix: c2,
+            order: 2,
+            symbol: 2,
+            direction: *direction,
+            basis: PhantomData,
+        }
+    }
+    /// Axis could be [110] or [1-10]
+    pub fn c2_face_diag(
+        &self,
+        direction: &D<HexBasis, FaceDiagonal>,
+    ) -> CyclicGroup<HexBasis, FaceDiagonal> {
+        // Derived from cartesian C4_001 * C2_100/010
+        let r4 = GroupBuilder::<Standard, 4>::new()
+            .c4(&DirectionBuilder::<Standard>::new().c())
+            .matrix;
+        // Branch
+        let generator = match direction.hkl()[1] {
+            // Direction is [110], C2_110 = C4_001 * C2_100
+            1 => {
+                let r2 = GroupBuilder::<Standard, 2>::new()
+                    .c2(&DirectionBuilder::<Standard>::new().a())
+                    .matrix;
+                let matrix = r4 * r2;
+                matrix.map(|i| i.round())
+            }
+            // Direction is [110], C2_110 = C4_001 * C2_010
+            -1 => {
+                let r2 = GroupBuilder::<Standard, 2>::new()
+                    .c2(&DirectionBuilder::<Standard>::new().b())
+                    .matrix;
+                let matrix = r4 * r2;
+                matrix.map(|i| i.round())
+            }
+            // Prevented from type state of the `direction`
+            _ => Matrix4::zeros(),
+        };
+        CyclicGroup {
+            matrix: generator,
             order: 2,
             symbol: 2,
             direction: *direction,
@@ -112,12 +160,12 @@ impl GroupBuilder<HexBasis, -2> {
     /// The m group generator.
     pub fn m(&self, direction: &D<HexBasis, FaceDiagonal>) -> CyclicGroup<HexBasis, FaceDiagonal> {
         // C2
-        let c2 = GroupBuilder::<HexBasis, 2>::new().c2(direction);
+        let c2 = GroupBuilder::<HexBasis, 2>::new().c2_face_diag(direction);
         // Inversion
         let i = GroupBuilder::<HexBasis, -1>::new().i();
         // I * C2 = M
         CyclicGroup {
-            generator: c2.generator * i.generator,
+            matrix: c2.matrix * i.matrix,
             order: 2,
             symbol: -2,
             direction: *direction,
