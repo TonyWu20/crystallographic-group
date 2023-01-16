@@ -116,4 +116,7 @@ impl DirectionBuilder<HexBasis> {
     pub fn ab(&self) -> D<HexBasis, FaceDiagonal> {
         D::new([1, 1, 0])
     }
+    pub fn a_b(&self) -> D<HexBasis, FaceDiagonal> {
+        D::new([1, -1, 0])
+    }
 }
