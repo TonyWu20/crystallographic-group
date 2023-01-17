@@ -1,7 +1,6 @@
 use std::{fmt::Display, marker::PhantomData};
 
 use crate::{
-    crystal_symmetry_directions::Universal,
     point_groups::{GroupBuilder, SymmetryGroup},
     CrystalSystem, Standard, Triclinic,
 };
