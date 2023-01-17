@@ -8,9 +8,11 @@ use crate::{Basis, HexBasis, Standard};
 pub trait Axis {}
 /// For axis that is not [000]
 pub trait RealAxis: Axis + Copy {}
-pub trait Primary {}
-pub trait Secondary {}
-pub trait Tertiary {}
+
+pub trait DirectionOrder {}
+pub trait Primary: DirectionOrder {}
+pub trait Secondary: DirectionOrder {}
+pub trait Tertiary: DirectionOrder {}
 
 /// For identity and inversion
 #[derive(Debug, Clone, Copy)]
@@ -47,15 +49,19 @@ pub struct D<T: Basis, U: Axis, const H: i8, const K: i8, const L: i8> {
 /// Type alias for [001]
 pub type CAxis<T> = D<T, Principal, 0, 0, 1>;
 /// Except in Triclinic/Monoclinic
+impl<T: Basis> DirectionOrder for CAxis<T> {}
 impl<T: Basis> Primary for CAxis<T> {}
 
 /// Type alias for [010]
 pub type BAxis = D<Standard, Principal, 0, 1, 0>;
+impl DirectionOrder for BAxis {}
 impl Secondary for BAxis {}
 
 /// Type alias for [110]
 pub type ABAxis<T> = D<T, FaceDiagonal, 1, 1, 0>;
 pub type ABmAxis<T> = D<T, FaceDiagonal, 1, -1, 0>;
+impl<T: Basis> DirectionOrder for ABAxis<T> {}
+impl<T: Basis> DirectionOrder for ABmAxis<T> {}
 
 /// In trigonal/hexagonal system
 impl Secondary for ABAxis<HexBasis> {}
@@ -66,6 +72,7 @@ impl Tertiary for ABmAxis<Standard> {}
 
 /// Type alias for [111]
 pub type ABCAxis = D<Standard, BodyDiagonal, 1, 1, 1>;
+impl DirectionOrder for ABCAxis {}
 /// In cubic system
 impl Secondary for ABCAxis {}
 
