@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 
 use super::SpaceGroupProperties;
 
+pub trait BravaisLattice {}
+
 /// Primitive
 pub struct P;
 /// A-face centered
@@ -185,16 +187,18 @@ impl SpaceGroupProperties for H {
     }
 }
 
-macro_rules! impl_display {
+macro_rules! impl_bravais {
     ($(($x: ty, $output: expr)), * ) => {
         $(impl Display for $x {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, $output)
             }
-        })*
+        }
+          impl BravaisLattice for $x {}
+        )*
     };
 }
-impl_display!(
+impl_bravais!(
 (P, "P"),
 (A, "A"),
 (B, "B"),
