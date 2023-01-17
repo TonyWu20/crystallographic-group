@@ -5,17 +5,15 @@ use nalgebra::Matrix4;
 
 use crate::{crystal_symmetry_directions::Axis, Basis};
 
-use self::basic_cyclic_groups::CyclicGroup;
-
 mod basic_cyclic_groups;
+pub use basic_cyclic_groups::{CyclicGroup, CyclicGroupIter, GroupBuilder};
 
-pub struct PointGroup {
+pub struct SymmetryGroup {
     elements: Vec<Matrix4<f64>>,
-    symbol: String,
 }
 
 impl<T1: Basis, U1: Axis, T2: Basis, U2: Axis> Mul<CyclicGroup<T2, U2>> for CyclicGroup<T1, U1> {
-    type Output = PointGroup;
+    type Output = SymmetryGroup;
 
     fn mul(self, rhs: CyclicGroup<T2, U2>) -> Self::Output {
         let ops_g1: Vec<Matrix4<f64>> = self.iter().collect();
@@ -25,15 +23,12 @@ impl<T1: Basis, U1: Axis, T2: Basis, U2: Axis> Mul<CyclicGroup<T2, U2>> for Cycl
             .cartesian_product(ops_g1.iter())
             .map(|(a, b)| a * b)
             .collect();
-        PointGroup {
-            elements: g1_g2,
-            symbol: "N/A".into(),
-        }
+        SymmetryGroup { elements: g1_g2 }
     }
 }
 
-impl<T: Basis, U: Axis> Mul<CyclicGroup<T, U>> for PointGroup {
-    type Output = PointGroup;
+impl<T: Basis, U: Axis> Mul<CyclicGroup<T, U>> for SymmetryGroup {
+    type Output = SymmetryGroup;
 
     fn mul(self, rhs: CyclicGroup<T, U>) -> Self::Output {
         let g1g2: Vec<Matrix4<f64>> = self.elements;
@@ -43,10 +38,7 @@ impl<T: Basis, U: Axis> Mul<CyclicGroup<T, U>> for PointGroup {
             .cartesian_product(g1g2.iter())
             .map(|(a, b)| a * b)
             .collect();
-        PointGroup {
-            elements: g1g2_g3,
-            symbol: "N/A".into(),
-        }
+        SymmetryGroup { elements: g1g2_g3 }
     }
 }
 
