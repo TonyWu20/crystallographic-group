@@ -23,12 +23,6 @@ pub struct Principal;
 impl Axis for Principal {}
 impl RealAxis for Principal {}
 
-#[derive(Debug, Clone, Copy)]
-pub struct CAxis;
-impl Axis for CAxis {}
-impl RealAxis for CAxis {}
-impl Primary for CAxis {}
-
 /// [110]
 #[derive(Debug, Clone, Copy)]
 pub struct FaceDiagonal;
@@ -49,6 +43,31 @@ pub struct D<T: Basis, U: Axis, const H: i8, const K: i8, const L: i8> {
     /// Mark the axis type
     axis_type: PhantomData<U>,
 }
+
+/// Type alias for [001]
+pub type CAxis<T> = D<T, Principal, 0, 0, 1>;
+/// Except in Triclinic/Monoclinic
+impl<T: Basis> Primary for CAxis<T> {}
+
+/// Type alias for [010]
+pub type BAxis = D<Standard, Principal, 0, 1, 0>;
+impl Secondary for BAxis {}
+
+/// Type alias for [110]
+pub type ABAxis<T> = D<T, FaceDiagonal, 1, 1, 0>;
+pub type ABmAxis<T> = D<T, FaceDiagonal, 1, -1, 0>;
+
+/// In trigonal/hexagonal system
+impl Secondary for ABAxis<HexBasis> {}
+impl Secondary for ABmAxis<HexBasis> {}
+/// In cubic system
+impl Tertiary for ABAxis<Standard> {}
+impl Tertiary for ABmAxis<Standard> {}
+
+/// Type alias for [111]
+pub type ABCAxis = D<Standard, BodyDiagonal, 1, 1, 1>;
+/// In cubic system
+impl Secondary for ABCAxis {}
 
 /// Common methods
 impl<T: Basis, U: Axis, const H: i8, const K: i8, const L: i8> D<T, U, H, K, L> {
