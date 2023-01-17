@@ -44,7 +44,7 @@ impl SpaceGroupBuilder<Undefined, Undefined> {
 }
 
 impl SpaceGroupBuilder<Triclinic, P> {
-    pub fn p_1() -> SpaceGroup<Triclinic, P> {
+    pub fn p1() -> SpaceGroup<Triclinic, P> {
         let e = GroupBuilder::<Standard, 1>::new().e();
         let p1 = e * e;
         SpaceGroup {

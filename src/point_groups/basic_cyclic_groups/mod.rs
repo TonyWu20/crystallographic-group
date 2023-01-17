@@ -2,30 +2,26 @@ use std::marker::PhantomData;
 
 use nalgebra::{Matrix4, Vector3};
 
-use crate::{
-    crystal_symmetry_directions::{Axis, DirectionBuilder, Universal, D},
-    Basis,
-};
+use crate::Basis;
 
 mod hex_basis;
 mod standard_basis;
 
 /// The basis cyclic group, representing: 1,2,3,4,6, -1, m, -3, -4 and -6
 #[derive(Clone, Copy)]
-pub struct CyclicGroup<T: Basis, U: Axis> {
+pub struct CyclicGroup<T: Basis> {
     /// The basic element `g`
     matrix: Matrix4<f64>,
     /// Order of the group
     order: u8,
     symbol: i8,
-    /// Symmetry Direction
-    direction: D<T, U>,
+    direction: [i8; 3],
     /// Basis of coordinates
     basis: PhantomData<T>,
 }
 
-impl<T: Basis, U: Axis> CyclicGroup<T, U> {
-    pub fn iter(&self) -> CyclicGroupIter<T, U> {
+impl<T: Basis> CyclicGroup<T> {
+    pub fn iter(&self) -> CyclicGroupIter<T> {
         CyclicGroupIter::new(self)
     }
     fn translate_matrix(translate_vector: Vector3<f64>) -> Matrix4<f64> {
@@ -103,12 +99,12 @@ impl<T: Basis, const N: i8> GroupBuilder<T, N> {
 
 /// The operation E, identity for both basis.
 impl<T: Basis> GroupBuilder<T, 1> {
-    pub fn e(&self) -> CyclicGroup<T, Universal> {
+    pub fn e(&self) -> CyclicGroup<T> {
         CyclicGroup {
             matrix: Matrix4::identity(),
             order: 1,
             symbol: 1,
-            direction: DirectionBuilder::new().zero(),
+            direction: [0, 0, 0],
             basis: PhantomData,
         }
     }
@@ -116,35 +112,35 @@ impl<T: Basis> GroupBuilder<T, 1> {
 
 /// The operation I, inversion for both basis.
 impl<T: Basis> GroupBuilder<T, -1> {
-    pub fn i(&self) -> CyclicGroup<T, Universal> {
+    pub fn i(&self) -> CyclicGroup<T> {
         CyclicGroup {
             matrix: Matrix4::from_diagonal_element(-1.0),
             order: 2,
             symbol: -1,
-            direction: DirectionBuilder::new().zero(),
+            direction: [0, 0, 0],
             basis: PhantomData,
         }
     }
 }
 
-impl<'a, T: Basis, U: Axis> IntoIterator for &'a CyclicGroup<T, U> {
+impl<'a, T: Basis> IntoIterator for &'a CyclicGroup<T> {
     type Item = Matrix4<f64>;
 
-    type IntoIter = CyclicGroupIter<'a, T, U>;
+    type IntoIter = CyclicGroupIter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-pub struct CyclicGroupIter<'a, T: Basis, U: Axis> {
+pub struct CyclicGroupIter<'a, T: Basis> {
     curr_element: Matrix4<f64>,
-    group: &'a CyclicGroup<T, U>,
+    group: &'a CyclicGroup<T>,
     count: u8,
 }
 
-impl<'a, T: Basis, U: Axis> CyclicGroupIter<'a, T, U> {
-    fn new(group: &'a CyclicGroup<T, U>) -> Self {
+impl<'a, T: Basis> CyclicGroupIter<'a, T> {
+    fn new(group: &'a CyclicGroup<T>) -> Self {
         Self {
             curr_element: Matrix4::identity(),
             group,
@@ -153,7 +149,7 @@ impl<'a, T: Basis, U: Axis> CyclicGroupIter<'a, T, U> {
     }
 }
 
-impl<'a, T: Basis, U: Axis> Iterator for CyclicGroupIter<'a, T, U> {
+impl<'a, T: Basis> Iterator for CyclicGroupIter<'a, T> {
     type Item = Matrix4<f64>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -168,7 +164,7 @@ impl<'a, T: Basis, U: Axis> Iterator for CyclicGroupIter<'a, T, U> {
     }
 }
 
-impl<'a, T: Basis, U: Axis> ExactSizeIterator for CyclicGroupIter<'a, T, U> {
+impl<'a, T: Basis> ExactSizeIterator for CyclicGroupIter<'a, T> {
     fn len(&self) -> usize {
         (self.group.order - self.count) as usize
     }
@@ -203,7 +199,7 @@ mod test {
         let r2_z = GroupBuilder::<Standard, 2>::new().c2(&z_axis);
         let standard_ab = DirectionBuilder::<Standard>::new().ab();
         let r2_s_ab = GroupBuilder::<Standard, 2>::new().c2(&standard_ab);
-        let axis_111 = DirectionBuilder::<Standard>::new().cubic_diagonal();
+        let axis_111 = DirectionBuilder::<Standard>::new().abc();
         let axis_010 = DirectionBuilder::<Standard>::new().b();
         let r3_111 = GroupBuilder::<Standard, 3>::new().c3(&axis_111);
         let r4_010 = GroupBuilder::<Standard, 4>::new().c4(&z_axis);
@@ -217,16 +213,12 @@ mod test {
         println!("{}", r2_s_ab.matrix);
         println!("{}", r3_111.matrix);
         println!(
-            "{} at {:?}: {}",
-            r4_010.order,
-            r4_010.direction.hkl(),
-            r4_010.matrix
+            "{} at: {:?}: {}",
+            r4_010.order, r4_010.direction, r4_010.matrix
         );
         println!(
-            "{} at {:?}: {}",
-            r2_010.order,
-            r2_010.direction.hkl(),
-            r2_010.matrix
+            "{} at: {:?}: {}",
+            r2_010.order, r2_010.direction, r2_010.matrix
         );
     }
     #[test]

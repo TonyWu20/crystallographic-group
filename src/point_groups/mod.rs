@@ -3,7 +3,7 @@ use std::ops::Mul;
 use itertools::Itertools;
 use nalgebra::Matrix4;
 
-use crate::{crystal_symmetry_directions::Axis, Basis};
+use crate::Basis;
 
 mod basic_cyclic_groups;
 pub use basic_cyclic_groups::{CyclicGroup, CyclicGroupIter, GroupBuilder};
@@ -12,10 +12,10 @@ pub struct SymmetryGroup {
     elements: Vec<Matrix4<f64>>,
 }
 
-impl<T1: Basis, U1: Axis, T2: Basis, U2: Axis> Mul<CyclicGroup<T2, U2>> for CyclicGroup<T1, U1> {
+impl<T1: Basis, T2: Basis> Mul<CyclicGroup<T2>> for CyclicGroup<T1> {
     type Output = SymmetryGroup;
 
-    fn mul(self, rhs: CyclicGroup<T2, U2>) -> Self::Output {
+    fn mul(self, rhs: CyclicGroup<T2>) -> Self::Output {
         let ops_g1: Vec<Matrix4<f64>> = self.iter().collect();
         let ops_g2: Vec<Matrix4<f64>> = rhs.iter().collect();
         let g1_g2 = ops_g2
@@ -27,10 +27,10 @@ impl<T1: Basis, U1: Axis, T2: Basis, U2: Axis> Mul<CyclicGroup<T2, U2>> for Cycl
     }
 }
 
-impl<T: Basis, U: Axis> Mul<CyclicGroup<T, U>> for SymmetryGroup {
+impl<T: Basis> Mul<CyclicGroup<T>> for SymmetryGroup {
     type Output = SymmetryGroup;
 
-    fn mul(self, rhs: CyclicGroup<T, U>) -> Self::Output {
+    fn mul(self, rhs: CyclicGroup<T>) -> Self::Output {
         let g1g2: Vec<Matrix4<f64>> = self.elements;
         let g3: Vec<Matrix4<f64>> = rhs.iter().collect();
         let g1g2_g3 = g3
@@ -54,8 +54,8 @@ mod test {
             GroupBuilder::<Standard, 2>::new().c2(&DirectionBuilder::<Standard>::new().c());
         let r2_010 =
             GroupBuilder::<Standard, 2>::new().c2(&DirectionBuilder::<Standard>::new().b());
-        let r3_111 = GroupBuilder::<Standard, 3>::new()
-            .c3(&DirectionBuilder::<Standard>::new().cubic_diagonal());
+        let r3_111 =
+            GroupBuilder::<Standard, 3>::new().c3(&DirectionBuilder::<Standard>::new().abc());
         let r2_110 =
             GroupBuilder::<Standard, 2>::new().c2(&DirectionBuilder::<Standard>::new().ab());
         // 2_001 * 2_010 * 3+_111 * 2_110

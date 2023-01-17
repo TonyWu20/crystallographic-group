@@ -23,6 +23,12 @@ pub struct Principal;
 impl Axis for Principal {}
 impl RealAxis for Principal {}
 
+#[derive(Debug, Clone, Copy)]
+pub struct CAxis;
+impl Axis for CAxis {}
+impl RealAxis for CAxis {}
+impl Primary for CAxis {}
+
 /// [110]
 #[derive(Debug, Clone, Copy)]
 pub struct FaceDiagonal;
@@ -37,9 +43,7 @@ impl RealAxis for BodyDiagonal {}
 
 /// Struct to represent a direction under given coordinate system, carries the type of axis info.
 #[derive(Debug, Clone, Copy)]
-pub struct D<T: Basis, U: Axis> {
-    /// [hkl] representation of the direction.
-    hkl: [i8; 3],
+pub struct D<T: Basis, U: Axis, const H: i8, const K: i8, const L: i8> {
     /// Mark the coordinate system.
     basis: PhantomData<T>,
     /// Mark the axis type
@@ -47,10 +51,9 @@ pub struct D<T: Basis, U: Axis> {
 }
 
 /// Common methods
-impl<T: Basis, U: Axis> D<T, U> {
-    pub fn new(hkl: [i8; 3]) -> Self {
+impl<T: Basis, U: Axis, const H: i8, const K: i8, const L: i8> D<T, U, H, K, L> {
+    pub fn new() -> Self {
         Self {
-            hkl,
             basis: PhantomData,
             axis_type: PhantomData,
         }
@@ -58,7 +61,7 @@ impl<T: Basis, U: Axis> D<T, U> {
 
     /// Get the [hkl] representation.
     pub fn hkl(&self) -> [i8; 3] {
-        self.hkl
+        [H, K, L]
     }
     pub fn axis(&self) -> UnitVector3<f64> {
         let [x, y, z] = self.hkl();
@@ -70,53 +73,35 @@ impl<T: Basis, U: Axis> D<T, U> {
 /// the designated directions used for crystallographic groups.
 pub struct DirectionBuilder<U: Basis>(PhantomData<U>);
 
+/// Common directions available in both cartesian and hexagonal basis.
 impl<U: Basis> DirectionBuilder<U> {
     pub fn new() -> Self {
         Self(PhantomData)
     }
-    pub fn zero(&self) -> D<U, Universal> {
-        D::new([0, 0, 0])
+    pub fn zero(&self) -> D<U, Universal, 0, 0, 0> {
+        D::<U, Universal, 0, 0, 0>::new()
+    }
+    pub fn a(&self) -> D<U, Principal, 1, 0, 0> {
+        D::new()
+    }
+    pub fn b(&self) -> D<U, Principal, 0, 1, 0> {
+        D::new()
+    }
+    pub fn c(&self) -> D<U, Principal, 0, 0, 1> {
+        D::new()
+    }
+    pub fn ab(&self) -> D<U, FaceDiagonal, 1, 1, 0> {
+        D::new()
+    }
+    /// [1-10]
+    pub fn a_b(&self) -> D<U, FaceDiagonal, 1, -1, 0> {
+        D::new()
     }
 }
 
-/// Directions available in the standard coodinate system
+/// Special directions available in the standard coodinate system
 impl DirectionBuilder<Standard> {
-    pub fn a(&self) -> D<Standard, Principal> {
-        D::new([1, 0, 0])
-    }
-    pub fn b(&self) -> D<Standard, Principal> {
-        D::new([0, 1, 0])
-    }
-    pub fn c(&self) -> D<Standard, Principal> {
-        D::new([0, 0, 1])
-    }
-    pub fn cubic_diagonal(&self) -> D<Standard, BodyDiagonal> {
-        D::new([1, 1, 1])
-    }
-    /// [110]
-    pub fn ab(&self) -> D<Standard, FaceDiagonal> {
-        D::new([1, 1, 0])
-    }
-    /// [1-10]
-    pub fn a_b(&self) -> D<Standard, FaceDiagonal> {
-        D::new([1, -1, 0])
-    }
-}
-/// Directions available in the hex-basis coordinate system.
-impl DirectionBuilder<HexBasis> {
-    pub fn a(&self) -> D<HexBasis, Principal> {
-        D::new([1, 0, 0])
-    }
-    pub fn b(&self) -> D<HexBasis, Principal> {
-        D::new([0, 1, 0])
-    }
-    pub fn c(&self) -> D<HexBasis, Principal> {
-        D::new([0, 0, 1])
-    }
-    pub fn ab(&self) -> D<HexBasis, FaceDiagonal> {
-        D::new([1, 1, 0])
-    }
-    pub fn a_b(&self) -> D<HexBasis, FaceDiagonal> {
-        D::new([1, -1, 0])
+    pub fn abc(&self) -> D<Standard, BodyDiagonal, 1, 1, 1> {
+        D::new()
     }
 }
