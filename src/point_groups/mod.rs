@@ -1,45 +1,19 @@
-use std::ops::Mul;
-
-use itertools::Itertools;
 use nalgebra::Matrix4;
 
-use crate::Basis;
-
 mod basic_cyclic_groups;
-pub use basic_cyclic_groups::{CyclicGroup, CyclicGroupIter, GroupBuilder};
+mod point_group_symbols;
+pub use basic_cyclic_groups::{CyclicGroup, CyclicGroupIter, Generators, GroupBuilder};
+
+use crate::CrystalSystem;
+
+pub use self::point_group_symbols::*;
 
 pub struct SymmetryGroup {
-    elements: Vec<Matrix4<f64>>,
+    pub(crate) elements: Vec<Matrix4<f64>>,
 }
 
-impl<T1: Basis, T2: Basis> Mul<CyclicGroup<T2>> for CyclicGroup<T1> {
-    type Output = SymmetryGroup;
-
-    fn mul(self, rhs: CyclicGroup<T2>) -> Self::Output {
-        let ops_g1: Vec<Matrix4<f64>> = self.iter().collect();
-        let ops_g2: Vec<Matrix4<f64>> = rhs.iter().collect();
-        let g1_g2 = ops_g2
-            .iter()
-            .cartesian_product(ops_g1.iter())
-            .map(|(a, b)| a * b)
-            .collect();
-        SymmetryGroup { elements: g1_g2 }
-    }
-}
-
-impl<T: Basis> Mul<CyclicGroup<T>> for SymmetryGroup {
-    type Output = SymmetryGroup;
-
-    fn mul(self, rhs: CyclicGroup<T>) -> Self::Output {
-        let g1g2: Vec<Matrix4<f64>> = self.elements;
-        let g3: Vec<Matrix4<f64>> = rhs.iter().collect();
-        let g1g2_g3 = g3
-            .iter()
-            .cartesian_product(g1g2.iter())
-            .map(|(a, b)| a * b)
-            .collect();
-        SymmetryGroup { elements: g1g2_g3 }
-    }
+pub trait PointGroupSymbol<T: CrystalSystem> {
+    fn symbol(&self) -> String;
 }
 
 #[cfg(test)]
@@ -69,7 +43,7 @@ mod test {
         let r3_h001 =
             GroupBuilder::<HexBasis, 3>::new().c3(&DirectionBuilder::<HexBasis>::new().c());
         let c1 = GroupBuilder::<HexBasis, -2>::new()
-            .m(&DirectionBuilder::<HexBasis>::new().ab())
+            .m_face_diag(&DirectionBuilder::<HexBasis>::new().ab())
             .to_c();
         let p3c1 = r3_h001 * c1;
         println!("P 3c1");

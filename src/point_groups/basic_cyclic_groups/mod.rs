@@ -1,8 +1,11 @@
-use std::marker::PhantomData;
+use std::{iter::Product, marker::PhantomData, ops::Mul};
 
+use itertools::Itertools;
 use nalgebra::{Matrix4, Vector3};
 
 use crate::Basis;
+
+use super::SymmetryGroup;
 
 mod hex_basis;
 mod standard_basis;
@@ -20,12 +23,29 @@ pub struct CyclicGroup<T: Basis> {
     basis: PhantomData<T>,
 }
 
+#[derive(Clone)]
+pub struct Generators {
+    matrices: Vec<Matrix4<f64>>,
+    count: u8,
+    len: u8,
+}
+
+impl Generators {
+    pub fn matrices(&self) -> &[Matrix4<f64>] {
+        self.matrices.as_ref()
+    }
+}
+
 impl<T: Basis> CyclicGroup<T> {
     pub fn iter(&self) -> CyclicGroupIter<T> {
         CyclicGroupIter::new(self)
     }
     fn translate_matrix(translate_vector: Vector3<f64>) -> Matrix4<f64> {
         Matrix4::new_translation(&translate_vector)
+    }
+    pub fn notation(&self) -> String {
+        let [h, k, l] = self.direction;
+        format!("{}_{}{}{}", self.symbol, h, k, l)
     }
     pub fn to_a(self) -> Self {
         let tran_a = Self::translate_matrix(Vector3::new(1.0 / 2.0, 0.0, 0.0));
@@ -170,13 +190,83 @@ impl<'a, T: Basis> ExactSizeIterator for CyclicGroupIter<'a, T> {
     }
 }
 
-// impl Mul for CyclicGroup {
-//     type Output = PointGroup;
-//
-//     fn mul(self, rhs: Self) -> Self::Output {
-//         todo!()
-//     }
-// }
+impl<'a, T: Basis> From<CyclicGroupIter<'a, T>> for Generators {
+    fn from(value: CyclicGroupIter<'a, T>) -> Self {
+        let len = value.len() as u8;
+        Self {
+            matrices: value.collect(),
+            count: 0,
+            len,
+        }
+    }
+}
+
+impl<T1: Basis, T2: Basis> Mul<CyclicGroup<T2>> for CyclicGroup<T1> {
+    type Output = SymmetryGroup;
+
+    fn mul(self, rhs: CyclicGroup<T2>) -> Self::Output {
+        let ops_g1: Vec<Matrix4<f64>> = self.iter().collect();
+        let ops_g2: Vec<Matrix4<f64>> = rhs.iter().collect();
+        let g1_g2 = ops_g2
+            .iter()
+            .cartesian_product(ops_g1.iter())
+            .map(|(a, b)| a * b)
+            .collect();
+        SymmetryGroup { elements: g1_g2 }
+    }
+}
+
+impl<T: Basis> Mul<CyclicGroup<T>> for SymmetryGroup {
+    type Output = SymmetryGroup;
+
+    fn mul(self, rhs: CyclicGroup<T>) -> Self::Output {
+        let g1g2: Vec<Matrix4<f64>> = self.elements;
+        let g3: Vec<Matrix4<f64>> = rhs.iter().collect();
+        let g1g2_g3 = g3
+            .iter()
+            .cartesian_product(g1g2.iter())
+            .map(|(a, b)| a * b)
+            .collect();
+        SymmetryGroup { elements: g1g2_g3 }
+    }
+}
+
+impl Iterator for Generators {
+    type Item = Matrix4<f64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count < self.len {
+            let next_item = self.matrices.get(self.count as usize).unwrap();
+            self.count += 1;
+            Some(*next_item)
+        } else {
+            None
+        }
+    }
+}
+
+impl ExactSizeIterator for Generators {}
+
+impl Mul for Generators {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let new_len = rhs.len * self.len;
+        let new_matrices: Vec<Matrix4<f64>> =
+            rhs.cartesian_product(self).map(|(a, b)| a * b).collect();
+        Generators {
+            matrices: new_matrices,
+            count: 0,
+            len: new_len,
+        }
+    }
+}
+
+impl Product for Generators {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|a, b| a * b).unwrap()
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -185,7 +275,7 @@ mod test {
 
     use crate::{crystal_symmetry_directions::DirectionBuilder, HexBasis, Standard};
 
-    use super::GroupBuilder;
+    use super::{Generators, GroupBuilder};
 
     #[test]
     fn test_rot_generator() {
@@ -220,17 +310,19 @@ mod test {
             "{} at: {:?}: {}",
             r2_010.order, r2_010.direction, r2_010.matrix
         );
+        let c = vec![r2_010, r4_010];
+        let cp: Generators = c
+            .iter()
+            .map(|g| -> Generators { g.iter().into() })
+            .product();
+        cp.for_each(|m| println!("{m}"));
     }
     #[test]
     fn test_iter() {
         let axis_h001 = DirectionBuilder::<HexBasis>::new().c();
         let r6_h001 = GroupBuilder::<HexBasis, 6>::new().c6(&axis_h001);
-        r6_h001.into_iter().for_each(|m| println!("{}", m));
-        let m_010: Vec<Matrix4<f64>> = GroupBuilder::<Standard, -2>::new()
-            .m(&DirectionBuilder::<Standard>::new().b())
-            .iter()
-            .collect();
-        println!("{:?}", m_010);
+        let gr6: Generators = r6_h001.iter().into();
+        gr6.for_each(|m| println!("{m}"));
     }
     #[test]
     fn test_translate() {

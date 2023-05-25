@@ -174,7 +174,7 @@ impl GroupBuilder<HexBasis, 2> {
 
 impl GroupBuilder<HexBasis, -2> {
     /// The m group generator.
-    pub fn m<const K: i8>(
+    pub fn m_face_diag<const K: i8>(
         &self,
         direction: &D<HexBasis, FaceDiagonal, 1, K, 0>,
     ) -> CyclicGroup<HexBasis> {
@@ -188,6 +188,21 @@ impl GroupBuilder<HexBasis, -2> {
             order: 2,
             symbol: -2,
             direction: [1, K, 0],
+            basis: PhantomData,
+        }
+    }
+    pub fn m_principal<const H: i8, const K: i8, const L: i8>(
+        &self,
+        direction: &D<HexBasis, Principal, H, K, L>,
+    ) -> CyclicGroup<HexBasis> {
+        let c2 = GroupBuilder::<HexBasis, 2>::new().c2_principal(direction);
+        let i = GroupBuilder::<HexBasis, -1>::new().i();
+        // I * C2 = M
+        CyclicGroup {
+            matrix: c2.matrix * i.matrix,
+            order: 2,
+            symbol: -2,
+            direction: [H, K, L],
             basis: PhantomData,
         }
     }

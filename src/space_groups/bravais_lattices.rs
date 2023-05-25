@@ -1,33 +1,46 @@
 use std::fmt::Display;
-use std::marker::PhantomData;
 
 use super::SpaceGroupProperties;
 
 pub trait BravaisLattice {}
+pub trait MonoclinicLattice: BravaisLattice {}
+pub trait OrthorhombicLattice: BravaisLattice {}
+pub trait TetragonalLattice: BravaisLattice {}
+pub trait TrigonalLattice: BravaisLattice {}
+pub trait HexagonalLattice: BravaisLattice {}
+pub trait CubicLattice: BravaisLattice {}
 
 /// Primitive
 pub struct P;
+impl MonoclinicLattice for P {}
+impl OrthorhombicLattice for P {}
+impl TetragonalLattice for P {}
+impl TrigonalLattice for P {}
+impl HexagonalLattice for P {}
+impl CubicLattice for P {}
 /// A-face centered
 pub struct A;
+impl OrthorhombicLattice for A {}
 /// B-face centered
 pub struct B;
 /// C-face centered
 pub struct C;
+impl MonoclinicLattice for C {}
+impl OrthorhombicLattice for C {}
 /// Body centered
 pub struct I;
+impl OrthorhombicLattice for I {}
+impl TetragonalLattice for I {}
+impl CubicLattice for I {}
 /// Face centered (all)
 pub struct F;
+impl OrthorhombicLattice for F {}
+impl CubicLattice for F {}
 /// Rhombohedral
-pub struct Rh<T: RhombohedralCenter>(PhantomData<T>);
+pub struct R;
+impl TrigonalLattice for R {}
 /// Centered Hexagonal
 pub struct H;
-
-pub trait RhombohedralCenter {}
-pub struct RbAxis;
-pub struct HexAxis;
-
-impl RhombohedralCenter for RbAxis {}
-impl RhombohedralCenter for HexAxis {}
 
 impl SpaceGroupProperties for P {
     type Item = P;
@@ -131,27 +144,11 @@ impl SpaceGroupProperties for F {
     }
 }
 
-impl SpaceGroupProperties for Rh<RbAxis> {
-    type Item = Rh<RbAxis>;
+impl SpaceGroupProperties for R {
+    type Item = R;
 
     fn new() -> Self::Item {
-        Self(PhantomData)
-    }
-
-    fn points_per_lattice(&self) -> u32 {
-        1
-    }
-
-    fn lattice_coordinates(&self) -> Vec<[f64; 3]> {
-        vec![[0.0, 0.0, 0.0]]
-    }
-}
-
-impl SpaceGroupProperties for Rh<HexAxis> {
-    type Item = Rh<HexAxis>;
-
-    fn new() -> Self::Item {
-        Self(PhantomData)
+        Self
     }
 
     fn points_per_lattice(&self) -> u32 {
@@ -199,13 +196,12 @@ macro_rules! impl_bravais {
     };
 }
 impl_bravais!(
-(P, "P"),
-(A, "A"),
-(B, "B"),
-(C, "C"),
-(I, "I"),
-(F, "F"),
-(Rh<RbAxis>, "R-Primitive"),
-(Rh<HexAxis>, "R-Centered"),
-(H, "H")
+    (P, "P"),
+    (A, "A"),
+    (B, "B"),
+    (C, "C"),
+    (I, "I"),
+    (F, "F"),
+    (R, "R"),
+    (H, "H")
 );
