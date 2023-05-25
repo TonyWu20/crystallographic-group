@@ -1,15 +1,17 @@
 use std::{fmt::Display, marker::PhantomData};
 
+use nalgebra::Matrix4;
+
 use crate::{
-    point_groups::{GroupBuilder, SymmetryGroup},
-    CrystalSystem, Standard, Triclinic,
+    crystal_symmetry_directions::DirectionOrder, point_groups::PointGroupSymbol, CrystalSystem,
 };
 
-use self::bravais_lattices::{BravaisLattice, P};
+use self::bravais_lattices::BravaisLattice;
 
 mod bravais_lattices;
 
-/// Letters representing space groups
+mod monoclinic;
+mod triclinic;
 
 pub trait SpaceGroupProperties: Display {
     type Item;
@@ -19,39 +21,65 @@ pub trait SpaceGroupProperties: Display {
 }
 
 pub struct SpaceGroup<S: CrystalSystem, B: BravaisLattice> {
-    generators: SymmetryGroup,
+    generators: Vec<Matrix4<f64>>,
     symbol: String,
     system: PhantomData<S>,
     bravais: PhantomData<B>,
 }
 
-pub struct Undefined;
-impl CrystalSystem for Undefined {}
-impl BravaisLattice for Undefined {}
-
-pub struct SpaceGroupBuilder<S: CrystalSystem, B: BravaisLattice>(PhantomData<S>, PhantomData<B>);
-
-impl<S: CrystalSystem, B: BravaisLattice> SpaceGroupBuilder<S, B> {
-    pub fn new_builder() -> SpaceGroupBuilder<Undefined, Undefined> {
-        SpaceGroupBuilder(PhantomData, PhantomData)
-    }
-}
-
-impl SpaceGroupBuilder<Undefined, Undefined> {
-    pub fn triclinic() -> SpaceGroupBuilder<Triclinic, P> {
-        SpaceGroupBuilder(PhantomData, PhantomData)
-    }
-}
-
-impl SpaceGroupBuilder<Triclinic, P> {
-    pub fn p1() -> SpaceGroup<Triclinic, P> {
-        let e = GroupBuilder::<Standard, 1>::new().e();
-        let p1 = e * e;
-        SpaceGroup {
-            generators: p1,
-            symbol: "P1".into(),
+impl<S: CrystalSystem, B: BravaisLattice> SpaceGroup<S, B> {
+    pub fn builder() -> SpaceGroupBuilder<S, B, Empty> {
+        SpaceGroupBuilder {
+            point_group: Empty,
             system: PhantomData,
             bravais: PhantomData,
         }
+    }
+}
+
+pub struct Undefined;
+pub struct Empty;
+impl CrystalSystem for Undefined {}
+impl BravaisLattice for Undefined {}
+impl DirectionOrder for Undefined {}
+impl<T: CrystalSystem> PointGroupSymbol<T> for Empty {
+    fn symbol(&self) -> String {
+        "".into()
+    }
+}
+
+pub struct SpaceGroupBuilder<S: CrystalSystem, B: BravaisLattice, P: PointGroupSymbol<S>> {
+    point_group: P,
+    system: PhantomData<S>,
+    bravais: PhantomData<B>,
+}
+
+impl<S, B> SpaceGroupBuilder<S, B, Empty>
+where
+    S: CrystalSystem,
+    B: BravaisLattice,
+{
+    pub fn with_point_group<P: PointGroupSymbol<S>>(
+        self,
+        point_group: P,
+    ) -> SpaceGroupBuilder<S, B, P> {
+        SpaceGroupBuilder {
+            point_group,
+            system: PhantomData,
+            bravais: PhantomData,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{point_groups::PointGroupBuilder, Triclinic};
+
+    use super::{bravais_lattices::P, SpaceGroup};
+
+    #[test]
+    fn test_space_group() {
+        let tri_builder =
+            SpaceGroup::<Triclinic, P>::builder().with_point_group(PointGroupBuilder::new().g1());
     }
 }
