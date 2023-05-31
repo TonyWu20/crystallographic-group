@@ -6,13 +6,9 @@ use crate::{
     crystal_symmetry_directions::DirectionOrder, point_groups::PointGroupSymbol, CrystalSystem,
 };
 
-use self::bravais_lattices::BravaisLattice;
-
-mod short_symbols;
-
 mod bravais_lattices;
-
 mod monoclinic;
+mod short_symbols;
 mod triclinic;
 
 pub use bravais_lattices::*;
