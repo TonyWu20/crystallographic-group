@@ -11,7 +11,7 @@ mod hex_basis;
 mod standard_basis;
 
 /// The basis cyclic group, representing: 1,2,3,4,6, -1, m, -3, -4 and -6
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct CyclicGroup<T: Basis> {
     /// The basic element `g`
     matrix: Matrix4<f64>,
@@ -47,6 +47,7 @@ impl<T: Basis> CyclicGroup<T> {
         let [h, k, l] = self.direction;
         format!("{}_{}{}{}", self.symbol, h, k, l)
     }
+    /// Glide translation along half the lattice vector `a` of this face.
     pub fn to_a(self) -> Self {
         let tran_a = Self::translate_matrix(Vector3::new(1.0 / 2.0, 0.0, 0.0));
         Self {
@@ -54,6 +55,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translation along half the lattice vector `b` of this face.
     pub fn to_b(self) -> Self {
         let tran_b = Self::translate_matrix(Vector3::new(0.0, 1.0 / 2.0, 0.0));
         Self {
@@ -61,6 +63,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translation along half the lattice vector `c` of this face.
     pub fn to_c(self) -> Self {
         let tran_c = Self::translate_matrix(Vector3::new(0.0, 0.0, 1.0 / 2.0));
         Self {
@@ -68,6 +71,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translation along half the diagonal of this face
     pub fn to_n(self) -> Self {
         let tran_n = Self::translate_matrix(Vector3::new(1.0 / 2.0, 1.0 / 2.0, 1.0 / 2.0));
         Self {
@@ -75,6 +79,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translations along quarter of the lattice vector `a` of this face
     pub fn to_u(self) -> Self {
         let tran_n = Self::translate_matrix(Vector3::new(1.0 / 4.0, 0.0, 0.0));
         Self {
@@ -82,6 +87,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translations along quarter of the lattice vector `b` of this face
     pub fn to_v(self) -> Self {
         let tran_v = Self::translate_matrix(Vector3::new(0.0, 1.0 / 4.0, 0.0));
         Self {
@@ -89,6 +95,7 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+    /// Glide translations along quarter of the lattice vector `c` of this face
     pub fn to_w(self) -> Self {
         let tran_v = Self::translate_matrix(Vector3::new(0.0, 0.0, 1.0 / 4.0));
         Self {
@@ -103,6 +110,10 @@ impl<T: Basis> CyclicGroup<T> {
             ..self
         }
     }
+
+    pub fn matrix(&self) -> Matrix4<f64> {
+        self.matrix
+    }
 }
 
 /// The builder struct to limit the scope of valid crystallographic cyclic group
@@ -115,6 +126,9 @@ impl<T: Basis, const N: i8> GroupBuilder<T, N> {
     pub fn new() -> Self {
         Self(PhantomData)
     }
+    pub(crate) fn translate_matrix(translate_vector: Vector3<f64>) -> Matrix4<f64> {
+        Matrix4::new_translation(&translate_vector)
+    }
 }
 
 /// The operation E, identity for both basis.
@@ -122,6 +136,15 @@ impl<T: Basis> GroupBuilder<T, 1> {
     pub fn e(&self) -> CyclicGroup<T> {
         CyclicGroup {
             matrix: Matrix4::identity(),
+            order: 1,
+            symbol: 1,
+            direction: [0, 0, 0],
+            basis: PhantomData,
+        }
+    }
+    pub fn translate(&self, translate_vector: Vector3<f64>) -> CyclicGroup<T> {
+        CyclicGroup {
+            matrix: Self::translate_matrix(translate_vector),
             order: 1,
             symbol: 1,
             direction: [0, 0, 0],
@@ -271,8 +294,6 @@ impl Product for Generators {
 #[cfg(test)]
 mod test {
 
-    use nalgebra::{Matrix4, Vector3};
-
     use crate::{crystal_symmetry_directions::DirectionBuilder, HexBasis, Standard};
 
     use super::{Generators, GroupBuilder};
@@ -323,15 +344,5 @@ mod test {
         let r6_h001 = GroupBuilder::<HexBasis, 6>::new().c6(&axis_h001);
         let gr6: Generators = r6_h001.iter().into();
         gr6.for_each(|m| println!("{m}"));
-    }
-    #[test]
-    fn test_translate() {
-        let a = Matrix4::new_translation(&Vector3::new(0.5, 0.0, 0.0));
-        let r3_001 =
-            GroupBuilder::<HexBasis, 3>::new().c3(&DirectionBuilder::<HexBasis>::new().c());
-        let r3a_001 = a * r3_001.matrix;
-        println!("{}", r3a_001);
-        println!("{}", r3a_001 * r3a_001);
-        println!("{}", r3a_001 * r3a_001 * r3a_001);
     }
 }

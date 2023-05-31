@@ -5,3 +5,5 @@ mod point_groups;
 mod space_groups;
 
 pub use crystal_systems::*;
+pub use point_groups::*;
+pub use space_groups::*;

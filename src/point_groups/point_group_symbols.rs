@@ -1,14 +1,17 @@
 //! Definition and implementation of the 32 crystallographic point groups.
 use std::{fmt::Display, marker::PhantomData};
 
+use nalgebra::Matrix4;
+
 use crate::{
     crystal_symmetry_directions::{ABAxis, ABCAxis, ABmAxis, BAxis, CAxis},
-    Basis, CrystalSystem, Cubic, HexBasis, Hexagonal, Monoclinic, Orthorhombic, Standard,
-    Tetragonal, Triclinic, Trigonal,
+    Basis, CrystalSystem, Cubic, Generators, HexBasis, Hexagonal, Monoclinic, Orthorhombic,
+    Standard, Tetragonal, Triclinic, Trigonal,
 };
 
 use super::{CyclicGroup, GroupBuilder, PointGroupSymbol};
 
+#[derive(Debug, Clone)]
 pub struct PointGroup<T: CrystalSystem, U: Basis, const A: i8, const B: i8, const C: i8> {
     generators: Vec<CyclicGroup<U>>,
     system: PhantomData<T>,
@@ -26,6 +29,15 @@ where
 
     pub fn generators(&self) -> &[CyclicGroup<U>] {
         self.generators.as_ref()
+    }
+
+    pub fn generator_combo_matrices(&self) -> Vec<Matrix4<f64>> {
+        let combos: Generators = self
+            .generators()
+            .iter()
+            .map(|g| -> Generators { g.iter().into() })
+            .product();
+        combos.matrices().to_vec()
     }
 }
 impl<T, U, const A: i8, const B: i8, const C: i8> PointGroupSymbol<T> for PointGroup<T, U, A, B, C>
@@ -112,7 +124,7 @@ impl PointGroupBuilder<Triclinic, Standard> {
 }
 
 /// Monoclinic System
-pub type G2 = PointGroup<Monoclinic, Standard, 2, 0, 0>;
+pub type G2 = PointGroup<Monoclinic, Standard, 0, 2, 0>;
 pub type Gm = PointGroup<Monoclinic, Standard, M, 0, 0>;
 pub type Gc = PointGroup<Monoclinic, Standard, MC, 0, 0>;
 pub type G2m = PointGroup<Monoclinic, Standard, S2M, 0, 0>;

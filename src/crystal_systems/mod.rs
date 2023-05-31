@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-pub trait CrystalSystem {}
+pub trait CrystalSystem: Clone {}
 
-pub trait Basis: Debug {}
+pub trait Basis: Debug + Clone {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Standard;

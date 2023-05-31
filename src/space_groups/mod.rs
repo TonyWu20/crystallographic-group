@@ -8,6 +8,8 @@ use crate::{
 
 use self::bravais_lattices::BravaisLattice;
 
+mod short_symbols;
+
 mod bravais_lattices;
 
 mod monoclinic;
@@ -35,9 +37,19 @@ impl<S: CrystalSystem, B: BravaisLattice> SpaceGroup<S, B> {
             bravais: PhantomData,
         }
     }
+
+    pub fn generators(&self) -> &[Matrix4<f64>] {
+        self.generators.as_ref()
+    }
+
+    pub fn symbol(&self) -> &str {
+        self.symbol.as_ref()
+    }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Undefined;
+#[derive(Debug, Clone, Copy)]
 pub struct Empty;
 impl CrystalSystem for Undefined {}
 impl BravaisLattice for Undefined {}
@@ -48,10 +60,32 @@ impl<T: CrystalSystem> PointGroupSymbol<T> for Empty {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct SpaceGroupBuilder<S: CrystalSystem, B: BravaisLattice, P: PointGroupSymbol<S>> {
     point_group: P,
     system: PhantomData<S>,
     bravais: PhantomData<B>,
+}
+
+/// Macro implementations of name customized build function `build_$func_name` of `space_group_builder`
+#[macro_export]
+macro_rules! impl_space_group_builder {
+    ($system: ty, $bravais: ty, $point_group: ty, $space_group_func: ident, $symbol: literal, $func_name: ident) => {
+        impl SpaceGroupBuilder<$system, $bravais, $point_group> {
+            pub fn $func_name(&self) -> SpaceGroup<$system, $bravais> {
+                let generators = self
+                    .point_group
+                    .$space_group_func()
+                    .generator_combo_matrices();
+                SpaceGroup {
+                    generators,
+                    symbol: $symbol.into(),
+                    system: PhantomData,
+                    bravais: PhantomData,
+                }
+            }
+        }
+    };
 }
 
 impl<S, B> SpaceGroupBuilder<S, B, Empty>
@@ -61,10 +95,10 @@ where
 {
     pub fn with_point_group<P: PointGroupSymbol<S>>(
         self,
-        point_group: P,
+        point_group: &P,
     ) -> SpaceGroupBuilder<S, B, P> {
         SpaceGroupBuilder {
-            point_group,
+            point_group: point_group.clone(),
             system: PhantomData,
             bravais: PhantomData,
         }
@@ -79,7 +113,7 @@ mod test {
 
     #[test]
     fn test_space_group() {
-        let tri_builder =
-            SpaceGroup::<Triclinic, P>::builder().with_point_group(PointGroupBuilder::new().g1());
+        let _tri_builder =
+            SpaceGroup::<Triclinic, P>::builder().with_point_group(&PointGroupBuilder::new().g1());
     }
 }

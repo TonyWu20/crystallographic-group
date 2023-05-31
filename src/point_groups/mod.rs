@@ -12,7 +12,7 @@ pub struct SymmetryGroup {
     pub(crate) elements: Vec<Matrix4<f64>>,
 }
 
-pub trait PointGroupSymbol<T: CrystalSystem> {
+pub trait PointGroupSymbol<T: CrystalSystem>: Clone {
     fn symbol(&self) -> String;
 }
 

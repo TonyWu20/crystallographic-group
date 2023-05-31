@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, marker::PhantomData};
 
-use nalgebra::{Matrix4, Rotation3};
+use nalgebra::{Matrix4, Rotation3, Vector3};
 
 use crate::{
     crystal_symmetry_directions::{BodyDiagonal, Principal, RealAxis, D},
