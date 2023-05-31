@@ -15,6 +15,10 @@ mod bravais_lattices;
 mod monoclinic;
 mod triclinic;
 
+pub use bravais_lattices::*;
+pub use monoclinic::*;
+pub use triclinic::*;
+
 pub trait SpaceGroupProperties: Display {
     type Item;
     fn new() -> Self::Item;
