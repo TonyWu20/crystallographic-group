@@ -22,6 +22,7 @@ pub trait SpaceGroupProperties: Display {
     fn lattice_coordinates(&self) -> Vec<[f64; 3]>;
 }
 
+#[derive(Debug, Clone)]
 pub struct SpaceGroup<S: CrystalSystem, B: BravaisLattice> {
     generators: Vec<Matrix4<f64>>,
     symbol: String,
