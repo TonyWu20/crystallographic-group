@@ -1,7 +1,11 @@
 [package]
 name = "crystallographic-group"
 version = "0.1.0"
+authors = ["Tony Wu <tony.w21@gmail.com>"]
 edition = "2021"
+description = "Provide crystallographic group reference and useful information, e.g. lattice coordinates and symmetry operation matrices."
+repository = "https://github.com/TonyWu20/crystallographic-group"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
