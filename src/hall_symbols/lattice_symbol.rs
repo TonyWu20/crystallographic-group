@@ -1,8 +1,15 @@
+use std::fmt::Display;
+
 use nalgebra::Vector3;
+use winnow::PResult;
+
+use self::parser::parse_lattice_symbol;
+
+mod parser;
 
 pub trait LatticeSymbolChar {
     type Output;
-    fn translations(&self) -> Self::Output;
+    fn translations() -> Self::Output;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -11,27 +18,43 @@ pub struct LatticeSymbol {
     char: Lattices,
 }
 
+impl Display for LatticeSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sign = if self.minus_sign { "-" } else { "" };
+        write!(f, "{}{:?}", sign, self.char)
+    }
+}
+
+impl LatticeSymbol {
+    pub fn new(minus_sign: bool, char: Lattices) -> Self {
+        Self { minus_sign, char }
+    }
+    pub fn from_str(input: &mut &str) -> PResult<Self> {
+        parse_lattice_symbol(input)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Lattices {
-    P(P),
-    A(A),
-    B(B),
-    C(C),
-    I(I),
-    R(R),
-    F(F),
+    P,
+    A,
+    B,
+    C,
+    I,
+    R,
+    F,
 }
 
 impl Lattices {
-    fn get_translations(&self) -> Vec<Vector3<f32>> {
-        match &self {
-            Lattices::P(symbol) => symbol.translations().to_vec(),
-            Lattices::A(symbol) => symbol.translations().to_vec(),
-            Lattices::B(symbol) => symbol.translations().to_vec(),
-            Lattices::C(symbol) => symbol.translations().to_vec(),
-            Lattices::I(symbol) => symbol.translations().to_vec(),
-            Lattices::R(symbol) => symbol.translations().to_vec(),
-            Lattices::F(symbol) => symbol.translations().to_vec(),
+    fn get_translations(&self) -> Vec<Vector3<i32>> {
+        match self {
+            Lattices::P => P::translations().to_vec(),
+            Lattices::A => A::translations().to_vec(),
+            Lattices::B => B::translations().to_vec(),
+            Lattices::C => C::translations().to_vec(),
+            Lattices::I => I::translations().to_vec(),
+            Lattices::R => R::translations().to_vec(),
+            Lattices::F => F::translations().to_vec(),
         }
     }
 }
@@ -58,66 +81,55 @@ pub struct R;
 pub struct F;
 
 impl LatticeSymbolChar for P {
-    type Output = [Vector3<f32>; 1];
+    type Output = [Vector3<i32>; 1];
 
-    fn translations(&self) -> Self::Output {
-        [Vector3::new(0.0, 0.0, 0.0)]
+    fn translations() -> Self::Output {
+        [Vector3::new(0, 0, 0)]
     }
 }
 
 impl LatticeSymbolChar for A {
-    type Output = [Vector3<f32>; 2];
+    type Output = [Vector3<i32>; 2];
 
-    fn translations(&self) -> Self::Output {
-        [[0.0, 0.0, 0.0], [0.0, 0.5, 0.5]].map(Vector3::from)
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [0, 6, 6]].map(Vector3::from)
     }
 }
 
 impl LatticeSymbolChar for B {
-    type Output = [Vector3<f32>; 2];
+    type Output = [Vector3<i32>; 2];
 
-    fn translations(&self) -> Self::Output {
-        [[0.0, 0.0, 0.0], [0.5, 0.0, 0.5]].map(Vector3::from)
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [6, 0, 6]].map(Vector3::from)
     }
 }
 
 impl LatticeSymbolChar for C {
-    type Output = [Vector3<f32>; 2];
+    type Output = [Vector3<i32>; 2];
 
-    fn translations(&self) -> Self::Output {
-        [[0.0, 0.0, 0.0], [0.5, 0.5, 0.0]].map(Vector3::from)
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [6, 6, 0]].map(Vector3::from)
     }
 }
 
 impl LatticeSymbolChar for I {
-    type Output = [Vector3<f32>; 2];
+    type Output = [Vector3<i32>; 2];
 
-    fn translations(&self) -> Self::Output {
-        [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]].map(Vector3::from)
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [6, 6, 6]].map(Vector3::from)
     }
 }
 
 impl LatticeSymbolChar for R {
-    type Output = [Vector3<f32>; 3];
-    fn translations(&self) -> Self::Output {
-        [
-            [0.0, 0.0, 0.0],
-            [2.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0],
-            [1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0],
-        ]
-        .map(Vector3::from)
+    type Output = [Vector3<i32>; 3];
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [8, 4, 4], [4, 8, 8]].map(Vector3::from)
     }
 }
 
 impl LatticeSymbolChar for F {
-    type Output = [Vector3<f32>; 4];
-    fn translations(&self) -> Self::Output {
-        [
-            [0.0, 0.0, 0.0],
-            [0.0, 0.5, 0.5],
-            [0.5, 0.0, 0.5],
-            [0.5, 0.5, 0.0],
-        ]
-        .map(Vector3::from)
+    type Output = [Vector3<i32>; 4];
+    fn translations() -> Self::Output {
+        [[0, 0, 0], [0, 6, 6], [6, 0, 6], [6, 6, 0]].map(Vector3::from)
     }
 }
