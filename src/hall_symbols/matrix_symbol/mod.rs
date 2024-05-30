@@ -1,15 +1,14 @@
 use std::fmt::Display;
 
-use self::{
-    builder::MatrixSymbolBuilder,
-    notations::{NFold, NFoldDiag, NFoldSub, RotationAxis},
-};
-
 use super::translation_symbol::TranslationSymbol;
 
 mod builder;
 mod matrices;
 mod notations;
+
+pub use builder::MatrixSymbolBuilder;
+pub use matrices::SeitzMatrix;
+pub use notations::*;
 
 #[derive(Debug, Clone)]
 pub struct MatrixSymbol {
@@ -105,14 +104,12 @@ mod test {
         dbg!(set.insert(m_4_mat * m_4_mat));
         dbg!(set.insert(m_4_mat.powi(3)));
         dbg!(set.insert(m_4_mat.powi(4)));
-        println!("{}, {}", m_4_mat.powi(-3), m_4_mat);
-        println!("4vw^2 {}", m_4vw.seitz_matrix().unwrap().powi(2));
-        println!("4vw^3 {}", m_4vw.seitz_matrix().unwrap().powi(3));
-        println!("4vw^4 {}", m_4vw.seitz_matrix().unwrap().powi(4));
-        println!("4vw^-2 {}", m_4vw.seitz_matrix().unwrap().powi(-2));
-        println!(
-            "4vw -1 {}",
-            m_4vw.seitz_matrix().unwrap().try_inverse().unwrap()
-        )
+        let m_3 = MatrixSymbol::new_builder()
+            .set_nfold_body(NFold::N3)
+            .set_rotation_axis(RotationAxis::Z)
+            .build()
+            .unwrap();
+        let m_3_mat = m_3.seitz_matrix().unwrap();
+        println!("{}", m_3_mat);
     }
 }

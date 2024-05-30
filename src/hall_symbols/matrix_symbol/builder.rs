@@ -49,13 +49,13 @@ impl MatrixSymbolBuilder {
         self
     }
     pub fn build<'a>(&mut self) -> Result<MatrixSymbol, MatrixSymbolError<'a>> {
-        if self.nfold_body.is_some() && self.rotation_axis.is_some() {
+        if self.nfold_body.is_some() {
             Ok(MatrixSymbol {
                 minus_sign: self.minus_sign.unwrap_or(false),
                 nfold_body: self.nfold_body.unwrap(),
                 nfold_sub: self.nfold_sub.unwrap_or_default(),
                 nfold_diag: self.nfold_diag.unwrap_or_default(),
-                rotation_axis: self.rotation_axis.unwrap(),
+                rotation_axis: self.rotation_axis.unwrap_or_default(),
                 translation_symbols: self.translation_symbols.clone(),
             })
         } else {

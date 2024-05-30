@@ -159,22 +159,3 @@ impl<const A: char> RotationMatrix for Rotation<3, '*', A> {
         ]))
     }
 }
-
-#[cfg(test)]
-mod test {
-    use crate::hall_symbols::{
-        matrix_symbol::matrices::{Rotation, RotationMatrix},
-        origin_shift::OriginShift,
-    };
-
-    #[test]
-    fn rotation_matrix_gen() {
-        let mut r61 = Rotation::<6, '_', 'z'>::rotation_matrix().unwrap();
-        let r2a_b = Rotation::<2, '\'', 'z'>::rotation_matrix().unwrap();
-        r61.column_mut(3).z = 2;
-        println!("{r61:#}");
-        let shift = OriginShift::new(0, 0, -1);
-        println!("{}", shift.shifted_matrix(r61));
-        println!("{}", shift.shifted_matrix(r2a_b));
-    }
-}

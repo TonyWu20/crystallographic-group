@@ -3,18 +3,78 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{Matrix3, Matrix4, Vector3};
 
 use crate::hall_symbols::SEITZ_TRANSLATE_BASE_NUMBER;
 
-use super::{MatrixSymbol, MatrixSymbolError, NFold, NFoldDiag, RotationAxis};
+use super::{
+    notations::RotationType, MatrixSymbol, MatrixSymbolError, NFold, NFoldDiag, RotationAxis,
+};
 
 mod rotation_matrices;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd)]
 pub struct SeitzMatrix(Matrix4<i32>);
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd)]
+pub enum SeitzMatrixError {
+    NotRotationMatrix(Matrix4<i32>),
+}
+
+impl Display for SeitzMatrixError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SeitzMatrixError::NotRotationMatrix(m) => write!(f, "{m} is not a rotation matrix!"),
+        }
+    }
+}
+
 impl SeitzMatrix {
+    pub fn identity() -> Self {
+        Self(Matrix4::identity())
+    }
+    pub fn new(v: Matrix4<i32>) -> Self {
+        Self(v)
+    }
+    pub fn rotation_type(&self) -> Result<RotationType, SeitzMatrixError> {
+        let det = self.det();
+        let trace = self.trace();
+        match (det, trace) {
+            (-1, -3) => Ok(RotationType::I),
+            (-1, -2) => Ok(RotationType::M6),
+            (-1, -1) => Ok(RotationType::M4),
+            (-1, 0) => Ok(RotationType::M3),
+            (-1, 1) => Ok(RotationType::M),
+            (1, -1) => Ok(RotationType::N2),
+            (1, 0) => Ok(RotationType::N3),
+            (1, 1) => Ok(RotationType::N4),
+            (1, 2) => Ok(RotationType::N6),
+            (1, 3) => Ok(RotationType::E),
+            _ => Err(SeitzMatrixError::NotRotationMatrix(self.matrix())),
+        }
+    }
+
+    pub(crate) fn proper_rotation(&self) -> Option<Matrix3<i32>> {
+        if self
+            .rotation_type()
+            .is_ok_and(|typ| !matches!(typ, RotationType::E | RotationType::I))
+        {
+            let det = self.det();
+            let rotation = self.0.fixed_resize::<3, 3>(1).map(|v| v * det);
+            Some(rotation)
+        } else {
+            None
+        }
+    }
+
+    fn det(&self) -> i32 {
+        self.to_f64_mat().fixed_resize::<3, 3>(1.0).determinant() as i32
+    }
+
+    fn trace(&self) -> i32 {
+        self.0.trace() - 1
+    }
+
     // Property of cyclic group
     pub fn powi(&self, exponent: i32) -> Self {
         match exponent.cmp(&0) {
@@ -73,6 +133,16 @@ impl Add for SeitzMatrix {
 
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
+    }
+}
+
+impl Add<Vector3<i32>> for SeitzMatrix {
+    type Output = Self;
+    fn add(self, rhs: Vector3<i32>) -> Self::Output {
+        let mut mat = self.0;
+        let column = mat.column(3) + rhs.to_homogeneous();
+        mat.set_column(3, &column);
+        Self(self.0)
     }
 }
 
@@ -204,7 +274,13 @@ impl MatrixSymbol {
     }
     pub fn seitz_matrix(&self) -> Result<SeitzMatrix, MatrixSymbolError> {
         let rot_mat = self.get_rotation_matrix()?;
-        Ok(SeitzMatrix(self.set_transform(rot_mat)))
+        if self.minus_sign {
+            let mut mat = Matrix4::<i32>::identity().map(|v| -v) * self.set_transform(rot_mat);
+            mat.column_mut(3).w = 1;
+            Ok(SeitzMatrix(mat))
+        } else {
+            Ok(SeitzMatrix(self.set_transform(rot_mat)))
+        }
     }
 }
 
