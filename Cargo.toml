@@ -12,3 +12,4 @@ license = "MIT"
 [dependencies]
 nalgebra = "0.32.5"
 winnow = "0.6"
+fraction = "0.15"
