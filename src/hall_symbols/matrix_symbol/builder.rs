@@ -43,9 +43,9 @@ impl MatrixSymbolBuilder {
 
     pub fn set_translation_symbols(
         &mut self,
-        translation_symbols: Vec<TranslationSymbol>,
+        translation_symbols: Option<Vec<TranslationSymbol>>,
     ) -> &mut Self {
-        self.translation_symbols = Some(translation_symbols);
+        self.translation_symbols = translation_symbols;
         self
     }
     pub fn build<'a>(&mut self) -> Result<MatrixSymbol, MatrixSymbolError<'a>> {

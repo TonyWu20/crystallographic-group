@@ -12,7 +12,7 @@ pub trait LatticeSymbolChar {
     fn translations() -> Self::Output;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LatticeSymbol {
     minus_sign: bool,
     char: Lattices,
@@ -29,12 +29,26 @@ impl LatticeSymbol {
     pub fn new(minus_sign: bool, char: Lattices) -> Self {
         Self { minus_sign, char }
     }
-    pub fn from_str(input: &mut &str) -> PResult<Self> {
+    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
         parse_lattice_symbol(input)
+    }
+    pub fn get_translations(&self) -> Vec<Vector3<i32>> {
+        self.char.get_translations()
+    }
+    pub fn num_of_translations(&self) -> usize {
+        match self.char {
+            Lattices::P => 1,
+            Lattices::A => 2,
+            Lattices::B => 2,
+            Lattices::C => 2,
+            Lattices::I => 2,
+            Lattices::R => 3,
+            Lattices::F => 4,
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Lattices {
     P,
     A,

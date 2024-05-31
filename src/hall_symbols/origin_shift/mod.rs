@@ -1,12 +1,17 @@
 use std::ops::Neg;
 
 use nalgebra::{Matrix4, Vector4};
+use winnow::PResult;
+
+use self::parser::parse_origin_shift;
 
 use super::{matrix_symbol::SeitzMatrix, SEITZ_TRANSLATE_BASE_NUMBER};
 
 mod parser;
 
-#[derive(Debug, Clone, Copy)]
+pub const CHANGE_OF_BASIS_BASE_NUMBER: i32 = 72;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OriginShift {
     va: i32,
     vb: i32,
@@ -20,6 +25,10 @@ impl Default for OriginShift {
 }
 
 impl OriginShift {
+    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
+        parse_origin_shift(input)
+    }
+
     pub fn new(va: i32, vb: i32, vc: i32) -> Self {
         // Ensure value is between (-12, 12)
         let closed = [va, vb, vc].map(|v| {
@@ -48,7 +57,10 @@ impl OriginShift {
         // Output convention is positive
         result.column_mut(3).iter_mut().for_each(|v| {
             if !(0..SEITZ_TRANSLATE_BASE_NUMBER).contains(v) {
-                *v = *v % SEITZ_TRANSLATE_BASE_NUMBER + SEITZ_TRANSLATE_BASE_NUMBER
+                *v %= SEITZ_TRANSLATE_BASE_NUMBER;
+                if *v < 0 {
+                    *v += SEITZ_TRANSLATE_BASE_NUMBER;
+                }
             }
         });
         SeitzMatrix::new(result)

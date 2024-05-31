@@ -50,9 +50,8 @@ impl Display for MatrixSymbol {
 }
 
 impl MatrixSymbol {
-    pub fn try_from_str(input: &str) -> PResult<Self> {
-        let mut input = input;
-        parse_hall_matrix_symbol(&mut input)
+    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
+        parse_hall_matrix_symbol(input)
     }
 
     pub fn new_builder() -> MatrixSymbolBuilder {
