@@ -1,16 +1,20 @@
 use std::fmt::Display;
 
+use self::parser::parse_hall_matrix_symbol;
+
 use super::translation_symbol::TranslationSymbol;
 
 mod builder;
 mod matrices;
 mod notations;
+mod parser;
 
 pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
 pub use notations::*;
+use winnow::PResult;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MatrixSymbol {
     // `-` or not
     minus_sign: bool,
@@ -21,9 +25,82 @@ pub struct MatrixSymbol {
     translation_symbols: Option<Vec<TranslationSymbol>>,
 }
 
+impl Display for MatrixSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sign = if self.minus_sign { "-" } else { "" };
+        let translation_symbol = if let Some(symbols) = &self.translation_symbols {
+            symbols
+                .iter()
+                .map(|s| format!("{s}"))
+                .collect::<Vec<String>>()
+                .concat()
+        } else {
+            "".to_string()
+        };
+        write!(
+            f,
+            "{sign}{}{}{}{}{}",
+            self.nfold_body,
+            self.rotation_axis,
+            self.nfold_diag,
+            self.nfold_sub,
+            translation_symbol
+        )
+    }
+}
+
 impl MatrixSymbol {
+    pub fn try_from_str(input: &str) -> PResult<Self> {
+        let mut input = input;
+        parse_hall_matrix_symbol(&mut input)
+    }
+
     pub fn new_builder() -> MatrixSymbolBuilder {
         MatrixSymbolBuilder::default()
+    }
+
+    pub fn minus_sign(&self) -> bool {
+        self.minus_sign
+    }
+
+    pub fn nfold_body(&self) -> NFold {
+        self.nfold_body
+    }
+
+    pub fn nfold_sub(&self) -> NFoldSub {
+        self.nfold_sub
+    }
+
+    pub fn nfold_diag(&self) -> NFoldDiag {
+        self.nfold_diag
+    }
+
+    pub fn rotation_axis(&self) -> RotationAxis {
+        self.rotation_axis
+    }
+
+    pub fn translation_symbols(&self) -> Option<&Vec<TranslationSymbol>> {
+        self.translation_symbols.as_ref()
+    }
+
+    pub fn set_minus_sign(&mut self, minus_sign: bool) {
+        self.minus_sign = minus_sign;
+    }
+
+    pub fn set_nfold_body(&mut self, nfold_body: NFold) {
+        self.nfold_body = nfold_body;
+    }
+
+    pub fn set_nfold_sub(&mut self, nfold_sub: NFoldSub) {
+        self.nfold_sub = nfold_sub;
+    }
+
+    pub fn set_nfold_diag(&mut self, nfold_diag: NFoldDiag) {
+        self.nfold_diag = nfold_diag;
+    }
+
+    pub fn set_rotation_axis(&mut self, rotation_axis: RotationAxis) {
+        self.rotation_axis = rotation_axis;
     }
 }
 
@@ -49,7 +126,8 @@ mod test {
     use std::collections::HashSet;
 
     use crate::hall_symbols::{
-        matrix_symbol::matrices::SeitzMatrix, translation_symbol::TranslationSymbol,
+        matrix_symbol::{matrices::SeitzMatrix, NFoldSub},
+        translation_symbol::TranslationSymbol,
     };
 
     use super::{
@@ -62,11 +140,11 @@ mod test {
         let m_4acd: MatrixSymbol = MatrixSymbol::new_builder()
             .set_nfold_body(NFold::N4)
             .set_rotation_axis(RotationAxis::Z)
-            .set_translation_symbols(vec![
+            .set_translation_symbols(Some(vec![
                 TranslationSymbol::A,
                 TranslationSymbol::C,
                 TranslationSymbol::D,
-            ])
+            ]))
             .build()
             .unwrap();
         let matrix = m_4acd.seitz_matrix().unwrap();
@@ -74,14 +152,14 @@ mod test {
         let m_2xc = MatrixSymbol::new_builder()
             .set_nfold_body(NFold::N2)
             .set_rotation_axis(RotationAxis::X)
-            .set_translation_symbols(vec![TranslationSymbol::C])
+            .set_translation_symbols(Some(vec![TranslationSymbol::C]))
             .build()
             .unwrap();
         println!("2xc: {}", m_2xc.seitz_matrix().unwrap());
         let m_4vw = MatrixSymbol::new_builder()
             .set_nfold_body(NFold::N4)
             .set_rotation_axis(RotationAxis::default())
-            .set_translation_symbols(vec![TranslationSymbol::V, TranslationSymbol::W])
+            .set_translation_symbols(Some(vec![TranslationSymbol::V, TranslationSymbol::W]))
             .build()
             .unwrap();
         println!("4vw: {}", m_4vw.seitz_matrix().unwrap());
@@ -111,5 +189,11 @@ mod test {
             .unwrap();
         let m_3_mat = m_3.seitz_matrix().unwrap();
         println!("{}", m_3_mat);
+        let m_61 = MatrixSymbol::new_builder()
+            .set_nfold_body(NFold::N6)
+            .set_nfold_sub(NFoldSub::N1)
+            .build()
+            .unwrap();
+        println!("{}", m_61.seitz_matrix().unwrap());
     }
 }
