@@ -1,8 +1,11 @@
-use fraction::GenericFraction;
+use fraction::{GenericFraction, Zero};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::hall_symbols::{matrix_symbol::RotationType, SEITZ_TRANSLATE_BASE_NUMBER};
+use crate::hall_symbols::{
+    matrix_symbol::RotationType, SymmetryElement, SEITZ_TRANSLATE_BASE_NUMBER,
+};
 use std::{
+    cmp::Ordering,
     fmt::Display,
     hash::Hash,
     ops::{Add, Mul, Sub},
@@ -30,12 +33,37 @@ impl PartialEq for SeitzMatrix {
     }
 }
 
+impl SymmetryElement for SeitzMatrix {
+    fn equiv_num(&self) -> usize {
+        let rotation_order = self.rotation_type().expect("Invalid Seitz Matrix");
+        match rotation_order {
+            RotationType::E => 1,
+            RotationType::N2 => 2,
+            RotationType::N3 => 3,
+            RotationType::N4 => 4,
+            RotationType::N6 => 6,
+            RotationType::I => 1,
+            RotationType::M => 2,
+            RotationType::M3 => 3,
+            RotationType::M4 => 4,
+            RotationType::M6 => 6,
+        }
+    }
+}
+
 impl SeitzMatrix {
     pub fn identity() -> Self {
         Self(Matrix4::identity())
     }
+    pub fn inversion() -> Self {
+        Self(Matrix3::identity().map(|v: i32| -v).to_homogeneous())
+    }
     pub fn new(v: Matrix4<i32>) -> Self {
         Self(v)
+    }
+    pub fn is_unique_rotation(&self, reference: &Self) -> bool {
+        self.rotation_part() != reference.rotation_part()
+            && self.rotation_part().map(|v| -v) != reference.rotation_part()
     }
     pub fn rotation_type(&self) -> Result<RotationType, SeitzMatrixError> {
         let det = self.det();
@@ -79,7 +107,7 @@ impl SeitzMatrix {
     // Property of cyclic group
     pub fn powi(&self, exponent: i32) -> Self {
         match exponent.cmp(&0) {
-            std::cmp::Ordering::Less => {
+            Ordering::Less => {
                 // All the transformations related here have det ± 1
                 // Inverse matrix is guaranteed.
                 let inv = self.try_inverse().unwrap();
@@ -89,8 +117,8 @@ impl SeitzMatrix {
                     .unwrap();
                 Self(mat)
             }
-            std::cmp::Ordering::Equal => Self(Matrix4::identity()),
-            std::cmp::Ordering::Greater => {
+            Ordering::Equal => Self(Matrix4::identity()),
+            Ordering::Greater => {
                 let mat = (0..exponent)
                     .map(|_| self.0)
                     .reduce(|acc, x| acc * x)
@@ -146,6 +174,69 @@ impl SeitzMatrix {
     }
     pub fn translation_part(&self) -> Vector3<i32> {
         self.0.column(3).xyz()
+    }
+    pub fn jones_faithful_repr(&self) -> String {
+        let rotation_part = self
+            .rotation_part()
+            .column_iter()
+            .enumerate()
+            .map(|(i, v)| {
+                v.map(|val| match i {
+                    0 => 'x' as i32 * val,
+                    1 => 'y' as i32 * val,
+                    2 => 'z' as i32 * val,
+                    _ => '0' as i32 * val,
+                })
+                .map(|val| {
+                    let c = char::from_u32(val.unsigned_abs()).unwrap();
+                    match val.cmp(&0) {
+                        Ordering::Less => format!("-{c}"),
+                        Ordering::Equal => "0".into(),
+                        Ordering::Greater => format!("+{c}"),
+                    }
+                })
+            })
+            .collect::<Vec<Vector3<String>>>();
+        let rotation_mat = Matrix3::from_columns(&rotation_part);
+        let rotation_xyz = rotation_mat
+            .row_iter()
+            .map(|row| {
+                row.iter()
+                    .cloned()
+                    .collect::<Vec<String>>()
+                    .concat()
+                    .replace('0', "")
+            })
+            .collect::<Vec<String>>();
+        let tr_part = self
+            .translation_part()
+            .map(|v| {
+                if (0..SEITZ_TRANSLATE_BASE_NUMBER).contains(&v) {
+                    v / SEITZ_TRANSLATE_BASE_NUMBER
+                } else {
+                    let new_v = v % SEITZ_TRANSLATE_BASE_NUMBER;
+                    if new_v < 0 {
+                        new_v + SEITZ_TRANSLATE_BASE_NUMBER
+                    } else {
+                        new_v
+                    }
+                }
+            })
+            .map(GenericFraction::<i32>::from)
+            .iter()
+            .map(|v| match v.cmp(&GenericFraction::zero()) {
+                Ordering::Less => format!("-{v}"),
+                Ordering::Equal => String::new(),
+                Ordering::Greater => format!("+{v}"),
+            })
+            .collect::<Vec<String>>();
+        let faithful_repr = rotation_xyz
+            .iter()
+            .zip(tr_part.iter())
+            .map(|(r, t)| format!("{r}{t}"))
+            .collect::<Vec<String>>()
+            .join(",");
+        faithful_repr
     }
 }
 
@@ -204,20 +295,6 @@ impl Mul for SeitzMatrix {
 
 impl Display for SeitzMatrix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_fraction())
-    }
-}
-
-impl PartialOrd for SeitzMatrix {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for SeitzMatrix {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.rotation_type()
-            .unwrap()
-            .cmp(&other.rotation_type().unwrap())
+        write!(f, "{} | {}", self.jones_faithful_repr(), self.to_fraction())
     }
 }
