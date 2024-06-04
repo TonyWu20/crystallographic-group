@@ -65,6 +65,48 @@ impl SeitzMatrix {
         self.rotation_part() != reference.rotation_part()
             && self.rotation_part().map(|v| -v) != reference.rotation_part()
     }
+    pub fn eigenvector(&self) -> Vector3<i32> {
+        let m = self.rotation_part();
+        let det = self.det();
+        let m_i = m - Matrix3::<i32>::identity().map(|v| v * det);
+        let eigen_trails: Vec<Vector3<i32>> = (-1..2)
+            .rev()
+            .flat_map(|i| {
+                (-1..2)
+                    .rev()
+                    .flat_map(|j| {
+                        (-1..2)
+                            .rev()
+                            .filter_map(|k| {
+                                let eigen_trial = Vector3::new(i, j, k);
+                                if (m_i * eigen_trial) == Vector3::zeros() && [0, 0, 0] != [i, j, k]
+                                {
+                                    Some(eigen_trial)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Vector3<i32>>>()
+                    })
+                    .collect::<Vec<Vector3<i32>>>()
+            })
+            .collect();
+        let choice = eigen_trails
+            .iter()
+            .filter(|f| match f.z {
+                v if v > 0 => true,
+                0 => match f.y {
+                    v if v > 0 => true,
+                    0 => f.x > 0,
+                    _ => false,
+                },
+                _ => false,
+            })
+            .cloned()
+            .next()
+            .unwrap();
+        choice
+    }
     pub fn rotation_type(&self) -> Result<RotationType, SeitzMatrixError> {
         let det = self.det();
         let trace = self.trace();
@@ -175,7 +217,7 @@ impl SeitzMatrix {
     pub fn translation_part(&self) -> Vector3<i32> {
         self.0.column(3).xyz()
     }
-    pub fn jones_faithful_repr(&self) -> String {
+    fn rotation_jf_repr(&self) -> Vec<String> {
         let rotation_part = self
             .rotation_part()
             .column_iter()
@@ -207,22 +249,38 @@ impl SeitzMatrix {
                     .concat()
                     .replace('0', "")
             })
+            .map(|s| {
+                if s.len() == 2 && s.contains('+') {
+                    s.replace('+', "")
+                } else {
+                    s
+                }
+            })
             .collect::<Vec<String>>();
+        rotation_xyz
+    }
+    pub fn jones_faithful_repr_rot(&self) -> String {
+        self.rotation_jf_repr().join(",")
+    }
+    pub fn jones_faithful_repr(&self) -> String {
+        let rotation_xyz = self.rotation_jf_repr();
         let tr_part = self
             .translation_part()
             .map(|v| {
                 if (0..SEITZ_TRANSLATE_BASE_NUMBER).contains(&v) {
-                    v / SEITZ_TRANSLATE_BASE_NUMBER
+                    GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER)
                 } else {
                     let new_v = v % SEITZ_TRANSLATE_BASE_NUMBER;
                     if new_v < 0 {
-                        new_v + SEITZ_TRANSLATE_BASE_NUMBER
+                        GenericFraction::<i32>::new(
+                            v + SEITZ_TRANSLATE_BASE_NUMBER,
+                            SEITZ_TRANSLATE_BASE_NUMBER,
+                        )
                     } else {
-                        new_v
+                        GenericFraction::<i32>::new(new_v, SEITZ_TRANSLATE_BASE_NUMBER)
                     }
                 }
             })
-            .map(GenericFraction::<i32>::from)
             .iter()
             .map(|v| match v.cmp(&GenericFraction::zero()) {
                 Ordering::Less => format!("-{v}"),
@@ -295,6 +353,53 @@ impl Mul for SeitzMatrix {
 
 impl Display for SeitzMatrix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} | {}", self.jones_faithful_repr(), self.to_fraction())
+        write!(
+            f,
+            "{} | {:?}\n{}",
+            self.jones_faithful_repr(),
+            self.eigenvector(),
+            self.to_fraction()
+        )
     }
 }
+
+pub(crate) const ORDER_48: [&str; 48] = [
+    "x,y,z", "-x,-y,z", "-x,y,-z", "x,-y,-z", "z,x,y", "z,-x,-y", "-z,-x,y", "-z,x,-y", "y,z,x",
+    "-y,z,-x", "y,-z,-x", "-y,-z,x", "y,x,-z", "-y,-x,-z", "y,-x,z", "-y,x,z", "x,z,-y", "-x,z,y",
+    "-x,-z,-y", "x,-z,y", "z,y,-x", "z,-y,x", "-z,y,x", "-z,-y,-x", "-x,-y,-z", "x,y,-z", "x,-y,z",
+    "-x,y,z", "-z,-x,-y", "-z,x,y", "z,x,-y", "z,-x,y", "-y,-z,-x", "y,-z,x", "-y,z,x", "y,z,-x",
+    "-y,-x,z", "y,x,z", "-y,x,-z", "y,-x,-z", "-x,-z,y", "x,-z,-y", "x,z,y", "-x,z,-y", "-z,-y,x",
+    "-z,y,-x", "z,-y,-x", "z,y,x",
+];
+
+const ORDER_24: [&str; 24] = [
+    "x,y,z",
+    "-y,x-y,z",
+    "-x+y,-x,z",
+    "-x,-y,z",
+    "y,-x+y,z",
+    "x-y,x,z",
+    "y,x,-z",
+    "x-y,-y,-z",
+    "-x,-x+y,-z",
+    "-y,-x,-z",
+    "-x+y,y,-z",
+    "x,x-y,-z",
+    "-x,-y,-z",
+    "y,-x+y,-z",
+    "x-y,x,-z",
+    "x,y,-z",
+    "-y,x-y,-z",
+    "-x+y,-x,-z",
+    "-y,-x,z",
+    "-x+y,y,z",
+    "x,x-y,z",
+    "y,x,z",
+    "x-y,-y,z",
+    "-x,-x+y,z",
+];
+
+pub(crate) const ORDER_12: [&str; 12] = [
+    "x,y,z", "z,x,y", "y,z,x", "-z,-y,-x", "-y,-x,-z", "-x,-z,-y", "-x,-y,-z", "-z,-x,-y",
+    "-y,-z,-x", "z,y,x", "y,x,z", "x,z,y",
+];
