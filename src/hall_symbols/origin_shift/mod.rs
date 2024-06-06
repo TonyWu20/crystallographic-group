@@ -1,4 +1,4 @@
-use std::ops::Neg;
+use std::{fmt::Display, ops::Neg};
 
 use nalgebra::{Matrix4, Vector4};
 use winnow::PResult;
@@ -64,6 +64,12 @@ impl OriginShift {
             }
         });
         SeitzMatrix::new(result)
+    }
+}
+
+impl Display for OriginShift {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({} {} {})", self.va, self.vb, self.vc)
     }
 }
 

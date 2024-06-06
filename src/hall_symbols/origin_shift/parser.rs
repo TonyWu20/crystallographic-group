@@ -31,7 +31,7 @@ pub fn parse_origin_shift(input: &mut &str) -> PResult<OriginShift> {
                 Ok(OriginShift::new(va, vb, vc))
             }
         }
-        Err(e) => Ok(OriginShift::default()),
+        Err(_e) => Ok(OriginShift::default()),
     }
 }
 

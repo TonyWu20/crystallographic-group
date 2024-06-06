@@ -143,14 +143,14 @@ impl Ord for RotationType {
                 Ordering::Less
             }
             // 2 < 3, 4, 6, |-3|, |-4|, |-6|
-            (RotationType::N2, _) => Ordering::Greater,
+            (RotationType::N2, _) => Ordering::Less,
             // 3 > -1, ±2, -3
             (RotationType::N3, RotationType::N2)
             | (RotationType::N3, RotationType::M)
             | (RotationType::N3, RotationType::I)
-            | (RotationType::N3, RotationType::M3) => Ordering::Less,
+            | (RotationType::N3, RotationType::M3) => Ordering::Greater,
             (RotationType::N3, RotationType::N3) => Ordering::Equal,
-            (RotationType::N3, _) => Ordering::Greater,
+            (RotationType::N3, _) => Ordering::Less,
             // 4
             (RotationType::N4, RotationType::I)
             | (RotationType::N4, RotationType::N2)

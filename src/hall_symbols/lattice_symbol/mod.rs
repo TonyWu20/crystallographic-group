@@ -5,6 +5,8 @@ use winnow::PResult;
 
 use self::parser::parse_lattice_symbol;
 
+use super::{matrix_symbol::SeitzMatrix, SymmetryElement};
+
 mod parser;
 
 pub trait LatticeSymbolChar {
@@ -44,6 +46,38 @@ impl LatticeSymbol {
             Lattices::I => 2,
             Lattices::R => 3,
             Lattices::F => 4,
+        }
+    }
+    pub fn minus_sign(&self) -> bool {
+        self.minus_sign
+    }
+    pub fn seitz_matrices(&self) -> Vec<SeitzMatrix> {
+        if self.minus_sign {
+            // vec![SeitzMatrix::identity(), SeitzMatrix::inversion()]
+            self.get_translations()
+                .iter()
+                .map(|&v| [SeitzMatrix::identity() + v, SeitzMatrix::inversion() + v])
+                .collect::<Vec<[SeitzMatrix; 2]>>()
+                .concat()
+        } else {
+            self.get_translations()
+                .iter()
+                .map(|&v| SeitzMatrix::identity() + v)
+                .collect()
+            // vec![SeitzMatrix::identity()]
+        }
+    }
+
+    pub fn char(&self) -> Lattices {
+        self.char
+    }
+}
+
+impl SymmetryElement for LatticeSymbol {
+    fn equiv_num(&self) -> usize {
+        match self.minus_sign {
+            true => self.num_of_translations() * 2,
+            false => self.num_of_translations(),
         }
     }
 }

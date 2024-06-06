@@ -37,6 +37,25 @@ impl GeneralPositions {
     pub fn num_of_general_pos(&self) -> usize {
         self.core_position_set.len()
     }
+
+    pub fn text_format(&self) -> String {
+        self.derive_full_sets()
+            .iter()
+            .zip(self.lattice_translations.iter())
+            .map(|(set, tr)| {
+                let trans = tr.map(|v| GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER));
+                let trans_heading = format!("[{}, {}, {}] + set", trans.x, trans.y, trans.z);
+                let positions = set
+                    .iter()
+                    .enumerate()
+                    .map(|(i, m)| format!("{}, {}", i + 1, m.jones_faithful_repr()))
+                    .collect::<Vec<String>>()
+                    .join("\n");
+                [trans_heading, positions].join("\n")
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
 }
 
 impl Display for GeneralPositions {

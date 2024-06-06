@@ -1,6 +1,7 @@
-use nalgebra::{Matrix4, Vector3, Vector4};
+use nalgebra::{Matrix3, Matrix4, Vector3, Vector4};
 
 use crate::hall_symbols::matrix_symbol::{NFold, NFoldDiag, NFoldSub, RotationAxis};
+use crate::hall_symbols::SEITZ_TRANSLATE_BASE_NUMBER;
 
 use super::{MatrixSymbol, MatrixSymbolError};
 use super::{Rotation, RotationMatrix};
@@ -254,6 +255,14 @@ impl MatrixSymbol {
         }
     }
 
+    pub(crate) fn set_inversion(&self, rot_mat: Matrix4<i32>) -> Matrix4<i32> {
+        let inversion_mat = Matrix3::<i32>::from_diagonal_element(-1);
+        let tr = rot_mat.column(3);
+        let mut new_mat = (inversion_mat * rot_mat.fixed_resize::<3, 3>(1)).to_homogeneous();
+        new_mat.set_column(3, &tr);
+        new_mat
+    }
+
     pub(crate) fn set_transform(
         &self,
         mut rot_mat: Matrix4<i32>,
@@ -263,7 +272,18 @@ impl MatrixSymbol {
                 .iter()
                 .map(|sym| sym.translation_vector())
                 .sum::<Vector3<i32>>()
-                .map(|v| if !(0..12).contains(&v) { v % 12 } else { v });
+                .map(|v| {
+                    if !(0..12).contains(&v) {
+                        let new_v = v % 12;
+                        if new_v < 0 {
+                            new_v + SEITZ_TRANSLATE_BASE_NUMBER
+                        } else {
+                            new_v
+                        }
+                    } else {
+                        v
+                    }
+                });
             let mut t_col = final_translations.to_homogeneous();
             t_col.w = 1;
             rot_mat.set_column(3, &t_col);
@@ -283,7 +303,19 @@ impl MatrixSymbol {
                     rot_mat.set_column(3, &t_col);
                     Ok(rot_mat)
                 }
+                (NFold::N3, NFoldSub::N2) => {
+                    let t_col = match self.rotation_axis {
+                        RotationAxis::Omitted => Err(MatrixSymbolError::Invalid(self)),
+                        RotationAxis::X => Ok(Vector4::new(8, 0, 0, 1)),
+                        RotationAxis::Y => Ok(Vector4::new(0, 8, 0, 1)),
+                        RotationAxis::Z => Ok(Vector4::new(0, 0, 8, 1)),
+                    }?;
+                    rot_mat.set_column(3, &t_col);
+                    Ok(rot_mat)
+                }
+                (NFold::N3, NFoldSub::None) => Ok(rot_mat),
                 (NFold::N3, _) => Err(MatrixSymbolError::Invalid(self)),
+                (NFold::N4, NFoldSub::None) => Ok(rot_mat),
                 (NFold::N4, NFoldSub::N1) => {
                     let t_col = match self.rotation_axis {
                         RotationAxis::Omitted => Err(MatrixSymbolError::Invalid(self)),
@@ -305,7 +337,7 @@ impl MatrixSymbol {
                     Ok(rot_mat)
                 }
                 (NFold::N4, _) => Err(MatrixSymbolError::Invalid(self)),
-                (NFold::N6, NFoldSub::None) => todo!(),
+                (NFold::N6, NFoldSub::None) => Ok(rot_mat),
                 (NFold::N6, NFoldSub::N1) => {
                     let t_col = match self.rotation_axis {
                         RotationAxis::Omitted => Err(MatrixSymbolError::Invalid(self)),

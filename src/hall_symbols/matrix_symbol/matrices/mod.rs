@@ -10,7 +10,9 @@ mod rotation_matrices;
 /// Implementation detail for `SeitzMatrix`
 mod seitz_mat_impl;
 
-#[derive(Debug, Clone, Copy, Eq)]
+pub(crate) use seitz_mat_impl::{ORDER_12, ORDER_24, ORDER_48};
+
+#[derive(Debug, Clone, Copy, Eq, PartialOrd)]
 pub struct SeitzMatrix(Matrix4<i32>);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd)]
@@ -30,8 +32,8 @@ impl MatrixSymbol {
     pub fn seitz_matrix(&self) -> Result<SeitzMatrix, MatrixSymbolError> {
         let rot_mat = self.get_rotation_matrix()?;
         if self.minus_sign {
-            let mut mat = Matrix4::<i32>::identity().map(|v| -v) * self.set_transform(rot_mat)?;
-            mat.column_mut(3).w = 1;
+            let transformed_mat = self.set_transform(rot_mat)?;
+            let mat = self.set_inversion(transformed_mat);
             Ok(SeitzMatrix(mat))
         } else {
             Ok(SeitzMatrix(self.set_transform(rot_mat).unwrap_or_else(
@@ -51,7 +53,7 @@ trait RotationMatrix {
 mod test {
     use std::collections::HashSet;
 
-    use nalgebra::Matrix4;
+    use nalgebra::{Matrix3, Matrix4, Vector3};
 
     use super::SeitzMatrix;
 
@@ -77,5 +79,59 @@ mod test {
         set.insert(m3);
         println!("{:?}", set);
         println!("{}", (11 - (-1)) % 12);
+        let xyz = Vector3::<char>::new('x', 'y', 'z');
+        let xyz_rotated = (m4.rotation_part() * xyz.map(|v| v as i32)).map(|v| {
+            let c = char::from_u32(v.unsigned_abs()).unwrap();
+            if v < 0 {
+                format!("-{c}")
+            } else {
+                format!("{c}")
+            }
+        });
+        println!("{xyz_rotated}")
+    }
+    #[test]
+    fn test_eigen() {
+        let m = Matrix3::new(
+            -1_f64, 0_f64, 0_f64, 0_f64, 0_f64, 1_f64, 0_f64, 1_f64, 0_f64,
+        );
+        let m_i = m - Matrix3::identity();
+        let lu = m_i.lu();
+        println!("{}", lu.u());
+        let eigen_trails: Vec<Vector3<i32>> = (-1..2)
+            .flat_map(|i| {
+                (-1..2)
+                    .flat_map(|j| {
+                        (-1..2)
+                            .filter_map(|k| {
+                                let eigen_trial = Vector3::new(i as f64, j as f64, k as f64);
+                                if (m_i * eigen_trial).norm_squared() == 0.0
+                                    && [0, 0, 0] != [i, j, k]
+                                {
+                                    Some(eigen_trial.map(|v| v as i32))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Vector3<i32>>>()
+                    })
+                    .collect::<Vec<Vector3<i32>>>()
+            })
+            .collect();
+        let choice = eigen_trails
+            .iter()
+            .filter(|f| match f.z {
+                v if v > 0 => true,
+                0 => match f.y {
+                    v if v > 0 => true,
+                    0 => f.x > 0,
+                    _ => false,
+                },
+                _ => false,
+            })
+            .cloned()
+            .next()
+            .unwrap();
+        println!("{}", choice);
     }
 }

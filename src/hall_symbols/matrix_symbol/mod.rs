@@ -11,6 +11,7 @@ mod parser;
 
 pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
+pub(crate) use matrices::{ORDER_12, ORDER_24, ORDER_48};
 pub use notations::*;
 use winnow::PResult;
 
@@ -122,12 +123,8 @@ impl<'a> Display for MatrixSymbolError<'a> {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
 
-    use crate::hall_symbols::{
-        matrix_symbol::{matrices::SeitzMatrix, NFoldSub},
-        translation_symbol::TranslationSymbol,
-    };
+    use crate::hall_symbols::translation_symbol::TranslationSymbol;
 
     use super::{
         notations::{NFold, RotationAxis},
@@ -136,63 +133,20 @@ mod test {
 
     #[test]
     fn matrix_symbol_build() {
-        let m_4acd: MatrixSymbol = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N4)
-            .set_rotation_axis(RotationAxis::Z)
-            .set_translation_symbols(Some(vec![
-                TranslationSymbol::A,
-                TranslationSymbol::C,
-                TranslationSymbol::D,
-            ]))
-            .build()
-            .unwrap();
-        let matrix = m_4acd.seitz_matrix().unwrap();
-        println!("4acd: {matrix}");
-        let m_2xc = MatrixSymbol::new_builder()
+        let m2z = MatrixSymbol::new_builder()
             .set_nfold_body(NFold::N2)
-            .set_rotation_axis(RotationAxis::X)
-            .set_translation_symbols(Some(vec![TranslationSymbol::C]))
             .build()
             .unwrap();
-        println!("2xc: {}", m_2xc.seitz_matrix().unwrap());
-        let m_4vw = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N4)
-            .set_rotation_axis(RotationAxis::default())
-            .set_translation_symbols(Some(vec![TranslationSymbol::V, TranslationSymbol::W]))
+        let m2yd = MatrixSymbol::new_builder()
+            .set_nfold_body(NFold::N2)
+            .set_rotation_axis(RotationAxis::Y)
+            .set_translation_symbols(Some(vec![TranslationSymbol::D]))
             .build()
             .unwrap();
-        println!("4vw: {}", m_4vw.seitz_matrix().unwrap());
-        let m_4 = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N4)
-            .set_rotation_axis(RotationAxis::Z)
-            .build()
-            .unwrap();
-        let mut set: HashSet<SeitzMatrix> = HashSet::new();
-        let e = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N1)
-            .set_rotation_axis(RotationAxis::Z)
-            .build()
-            .unwrap()
-            .seitz_matrix()
-            .unwrap();
-        let m_4_mat = m_4.seitz_matrix().unwrap();
-        set.insert(m_4_mat);
-        set.insert(e);
-        dbg!(set.insert(m_4_mat * m_4_mat));
-        dbg!(set.insert(m_4_mat.powi(3)));
-        dbg!(set.insert(m_4_mat.powi(4)));
-        let m_3 = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N3)
-            .set_rotation_axis(RotationAxis::Z)
-            .build()
-            .unwrap();
-        let m_3_mat = m_3.seitz_matrix().unwrap();
-        println!("{}", m_3_mat);
-        let m_61 = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N6)
-            .set_nfold_sub(NFoldSub::N1)
-            .build()
-            .unwrap();
-        println!("{}", m_61.seitz_matrix().unwrap());
+        let m1 = m2z.seitz_matrix().unwrap() * m2yd.seitz_matrix().unwrap();
+        println!("{}", m1);
+        let m2 = m2yd.seitz_matrix().unwrap() * m2z.seitz_matrix().unwrap();
+        println!("{}", m2);
+        println!("{}", m2yd.seitz_matrix().unwrap() * m1);
     }
 }

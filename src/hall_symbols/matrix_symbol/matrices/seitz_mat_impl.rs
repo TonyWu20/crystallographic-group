@@ -217,6 +217,11 @@ impl SeitzMatrix {
     pub fn translation_part(&self) -> Vector3<i32> {
         self.0.column(3).xyz()
     }
+    pub fn set_translation_part(&mut self, new_translation: Vector3<i32>) {
+        let mut new_column = new_translation.to_homogeneous();
+        new_column.fill_row(3, 1);
+        self.0.set_column(3, &new_column)
+    }
     fn rotation_jf_repr(&self) -> Vec<String> {
         let rotation_part = self
             .rotation_part()
@@ -249,13 +254,7 @@ impl SeitzMatrix {
                     .concat()
                     .replace('0', "")
             })
-            .map(|s| {
-                if s.len() == 2 && s.contains('+') {
-                    s.replace('+', "")
-                } else {
-                    s
-                }
-            })
+            .map(|s| s.trim_start_matches('+').to_string())
             .collect::<Vec<String>>();
         rotation_xyz
     }
@@ -267,23 +266,31 @@ impl SeitzMatrix {
         let tr_part = self
             .translation_part()
             .map(|v| {
-                if (0..SEITZ_TRANSLATE_BASE_NUMBER).contains(&v) {
-                    GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER)
+                if (-SEITZ_TRANSLATE_BASE_NUMBER + 1..SEITZ_TRANSLATE_BASE_NUMBER).contains(&v) {
+                    if v >= 0 {
+                        GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER)
+                    } else {
+                        GenericFraction::<i32>::new_neg(v.abs(), SEITZ_TRANSLATE_BASE_NUMBER)
+                    }
                 } else {
                     let new_v = v % SEITZ_TRANSLATE_BASE_NUMBER;
-                    if new_v < 0 {
-                        GenericFraction::<i32>::new(
-                            v + SEITZ_TRANSLATE_BASE_NUMBER,
-                            SEITZ_TRANSLATE_BASE_NUMBER,
-                        )
-                    } else {
+                    // if new_v < 0 {
+                    //     GenericFraction::<i32>::new(
+                    //         v + SEITZ_TRANSLATE_BASE_NUMBER,
+                    //         SEITZ_TRANSLATE_BASE_NUMBER,
+                    //     )
+                    // } else {
+                    if new_v >= 0 {
                         GenericFraction::<i32>::new(new_v, SEITZ_TRANSLATE_BASE_NUMBER)
+                    } else {
+                        GenericFraction::<i32>::new_neg(new_v.abs(), SEITZ_TRANSLATE_BASE_NUMBER)
                     }
+                    // }
                 }
             })
             .iter()
             .map(|v| match v.cmp(&GenericFraction::zero()) {
-                Ordering::Less => format!("-{v}"),
+                Ordering::Less => format!("{v}"),
                 Ordering::Equal => String::new(),
                 Ordering::Greater => format!("+{v}"),
             })
@@ -314,10 +321,7 @@ impl Add<Vector3<i32>> for SeitzMatrix {
         let mut column = mat.column(3) + rhs.to_homogeneous();
         column.iter_mut().enumerate().for_each(|(i, v)| {
             if i < 3 {
-                let mut new_v = *v % SEITZ_TRANSLATE_BASE_NUMBER;
-                if new_v < 0 {
-                    new_v += SEITZ_TRANSLATE_BASE_NUMBER;
-                }
+                let new_v = *v % SEITZ_TRANSLATE_BASE_NUMBER;
                 *v = new_v;
             }
         });
@@ -342,9 +346,6 @@ impl Mul for SeitzMatrix {
         res.column_mut(3).iter_mut().enumerate().for_each(|(i, v)| {
             if i < 3 {
                 *v %= SEITZ_TRANSLATE_BASE_NUMBER;
-                if *v < 0 {
-                    *v += SEITZ_TRANSLATE_BASE_NUMBER;
-                }
             }
         });
         Self(res)
@@ -363,6 +364,7 @@ impl Display for SeitzMatrix {
     }
 }
 
+/// For cubic, tetragonal, orthorhombic, monoclinic and triclinic crystal systems
 pub(crate) const ORDER_48: [&str; 48] = [
     "x,y,z", "-x,-y,z", "-x,y,-z", "x,-y,-z", "z,x,y", "z,-x,-y", "-z,-x,y", "-z,x,-y", "y,z,x",
     "-y,z,-x", "y,-z,-x", "-y,-z,x", "y,x,-z", "-y,-x,-z", "y,-x,z", "-y,x,z", "x,z,-y", "-x,z,y",
@@ -372,7 +374,8 @@ pub(crate) const ORDER_48: [&str; 48] = [
     "-z,y,-x", "z,-y,-x", "z,y,x",
 ];
 
-const ORDER_24: [&str; 24] = [
+/// For hexagonal and trigonal crystal systems
+pub(crate) const ORDER_24: [&str; 24] = [
     "x,y,z",
     "-y,x-y,z",
     "-x+y,-x,z",
@@ -399,6 +402,7 @@ const ORDER_24: [&str; 24] = [
     "-x,-x+y,z",
 ];
 
+/// For rhombohedral system
 pub(crate) const ORDER_12: [&str; 12] = [
     "x,y,z", "z,x,y", "y,z,x", "-z,-y,-x", "-y,-x,-z", "-x,-z,-y", "-x,-y,-z", "-z,-x,-y",
     "-y,-z,-x", "z,y,x", "y,x,z", "x,z,y",
