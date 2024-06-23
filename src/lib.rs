@@ -1,4 +1,4 @@
 #![allow(dead_code)]
-mod database;
-mod hall_symbols;
-mod utils;
+pub mod database;
+pub mod hall_symbols;
+pub mod utils;

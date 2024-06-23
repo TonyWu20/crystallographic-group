@@ -1,4 +1,3 @@
-use core::panic;
 use std::{fmt::Display, hash::Hash};
 
 use nalgebra::Matrix4;
@@ -9,8 +8,6 @@ use super::{MatrixSymbol, MatrixSymbolError};
 mod rotation_matrices;
 /// Implementation detail for `SeitzMatrix`
 mod seitz_mat_impl;
-
-pub(crate) use seitz_mat_impl::{ORDER_12, ORDER_24, ORDER_48};
 
 #[derive(Debug, Clone, Copy, Eq, PartialOrd)]
 pub struct SeitzMatrix(Matrix4<i32>);
@@ -32,13 +29,16 @@ impl MatrixSymbol {
     pub fn seitz_matrix(&self) -> Result<SeitzMatrix, MatrixSymbolError> {
         let rot_mat = self.get_rotation_matrix()?;
         if self.minus_sign {
-            let transformed_mat = self.set_transform(rot_mat)?;
+            let transformed_mat = self
+                .set_transform(rot_mat)
+                .and_then(|v| self.set_translation_from_symbols(v))?;
             let mat = self.set_inversion(transformed_mat);
             Ok(SeitzMatrix(mat))
         } else {
-            Ok(SeitzMatrix(self.set_transform(rot_mat).unwrap_or_else(
-                |_| panic!("Set transform matrix failed for {:?}", self),
-            )))
+            let mat = self
+                .set_transform(rot_mat)
+                .and_then(|v| self.set_translation_from_symbols(v))?;
+            Ok(SeitzMatrix(mat))
         }
     }
 }

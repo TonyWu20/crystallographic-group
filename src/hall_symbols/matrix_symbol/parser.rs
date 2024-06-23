@@ -126,9 +126,24 @@ fn parse_translations(input: &mut &str) -> PResult<(NFoldSub, Option<Vec<Transla
     .parse_peek(to_peek)?;
     match peeking {
         peeking if ['1', '2', '3', '4', '5'].contains(&peeking) => {
-            one_of(['1', '2', '3', '4', '5'])
-                .map(|c| (NFoldSub::from(&c), None))
-                .parse_next(input)
+            let sub = one_of(['1', '2', '3', '4', '5'])
+                .map(|c| NFoldSub::from(&c))
+                .parse_next(input)?;
+            let translation_parse = repeat(
+                0..,
+                one_of::<_, _, _>(['a', 'b', 'c', 'n', 'u', 'v', 'w', 'd']),
+            )
+            .map(|trs: Vec<char>| -> Vec<TranslationSymbol> {
+                let translation_symbols: Vec<TranslationSymbol> =
+                    trs.iter().map(TranslationSymbol::from).collect();
+                translation_symbols
+            })
+            .parse_next(input)?;
+            if translation_parse.is_empty() {
+                Ok((sub, None))
+            } else {
+                Ok((sub, Some(translation_parse)))
+            }
         }
         peeking if ['a', 'b', 'c', 'n', 'u', 'v', 'w', 'd'].contains(&peeking) => {
             repeat(0.., one_of(['a', 'b', 'c', 'n', 'u', 'v', 'w', 'd']))

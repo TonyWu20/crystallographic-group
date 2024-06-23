@@ -41,20 +41,37 @@ impl GeneralPositions {
     pub fn text_format(&self) -> String {
         self.derive_full_sets()
             .iter()
+            .enumerate()
             .zip(self.lattice_translations.iter())
-            .map(|(set, tr)| {
+            .map(|((set_i, set), tr)| {
                 let trans = tr.map(|v| GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER));
                 let trans_heading = format!("[{}, {}, {}] + set", trans.x, trans.y, trans.z);
                 let positions = set
                     .iter()
                     .enumerate()
-                    .map(|(i, m)| format!("{}, {}", i + 1, m.jones_faithful_repr()))
+                    .map(|(i, m)| {
+                        format!(
+                            "{}, {}",
+                            set_i * self.core_position_set.len() + i + 1,
+                            m.jones_faithful_repr()
+                        )
+                    })
                     .collect::<Vec<String>>()
                     .join("\n");
                 [trans_heading, positions].join("\n")
             })
             .collect::<Vec<String>>()
             .join("\n")
+    }
+    pub fn pure_txt(&self) -> Vec<String> {
+        self.derive_full_sets()
+            .iter()
+            .flat_map(|v| {
+                v.iter()
+                    .map(|m| m.jones_faithful_repr())
+                    .collect::<Vec<String>>()
+            })
+            .collect::<Vec<String>>()
     }
 }
 

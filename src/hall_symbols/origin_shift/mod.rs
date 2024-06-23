@@ -3,6 +3,8 @@ use std::{fmt::Display, ops::Neg};
 use nalgebra::{Matrix4, Vector4};
 use winnow::PResult;
 
+use crate::utils::positive_mod_stbn_i32;
+
 use self::parser::parse_origin_shift;
 
 use super::{matrix_symbol::SeitzMatrix, SEITZ_TRANSLATE_BASE_NUMBER};
@@ -56,12 +58,7 @@ impl OriginShift {
         let mut result = mvi * seitz_matrix.matrix() * mv;
         // Output convention is positive
         result.column_mut(3).iter_mut().for_each(|v| {
-            if !(0..SEITZ_TRANSLATE_BASE_NUMBER).contains(v) {
-                *v %= SEITZ_TRANSLATE_BASE_NUMBER;
-                if *v < 0 {
-                    *v += SEITZ_TRANSLATE_BASE_NUMBER;
-                }
-            }
+            *v = positive_mod_stbn_i32(*v);
         });
         SeitzMatrix::new(result)
     }

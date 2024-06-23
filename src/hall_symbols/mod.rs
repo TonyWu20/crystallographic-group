@@ -7,15 +7,14 @@ use nalgebra::{Matrix3, Vector3};
 use winnow::PResult;
 
 use crate::{
-    database::SpaceGroupHallSymbol,
-    hall_symbols::matrix_symbol::{ORDER_12, ORDER_48},
+    database::{SpaceGroupHallSymbol, ORDER_12, ORDER_24, ORDER_48},
     utils::positive_mod_stbn_i32,
 };
 
 use self::{
     general_positions::GeneralPositions,
     lattice_symbol::LatticeSymbol,
-    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag, SeitzMatrix, ORDER_24},
+    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag, SeitzMatrix},
     origin_shift::OriginShift,
     parser::parse_hall_symbol,
 };
@@ -27,7 +26,7 @@ mod origin_shift;
 mod parser;
 mod translation_symbol;
 
-pub const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
+pub(crate) const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
 
 pub trait SymmetryElement {
     fn equiv_num(&self) -> usize;
@@ -109,7 +108,10 @@ impl HallSymbolNotation {
                 v.map(positive_mod_stbn_i32)
             })
             .fold(new_translation_pos, |curr, next| {
-                if next.map(|v| v as f64).norm_squared() < curr.map(|v| v as f64).norm_squared() {
+                if curr.map(|v| v as f64).norm_squared() > next.map(|v| v as f64).norm_squared()
+                    && curr.iter().filter(|&&v| v <= 0).count()
+                        >= next.iter().filter(|&&v| v <= 0).count()
+                {
                     next
                 } else {
                     curr
@@ -228,17 +230,15 @@ impl Display for HallSymbolNotation {
 #[cfg(test)]
 mod test {
 
-    use std::{
-        fs::{self, create_dir},
-        path::Path,
-    };
-
-    use fraction::GenericFraction;
     use indicatif::{ProgressBar, ProgressStyle};
 
     use crate::database::DEFAULT_SPACE_GROUP_SYMBOLS;
 
-    use super::HallSymbolNotation;
+    use super::{
+        matrix_symbol::{MatrixSymbol, NFold, NFoldSub},
+        translation_symbol::TranslationSymbol,
+        HallSymbolNotation,
+    };
 
     #[test]
     fn test_p178() {
@@ -278,12 +278,30 @@ mod test {
         test("P 4w 2c")
     }
     #[test]
-    fn test_43() {
+    fn test_45() {
+        test("I 2 -2c")
+    }
+    #[test]
+    fn test_80() {
+        let c1 = MatrixSymbol::new_builder()
+            .set_nfold_body(NFold::N4)
+            .set_nfold_sub(NFoldSub::N1)
+            .set_translation_symbols(Some(vec![TranslationSymbol::B]))
+            .build()
+            .unwrap();
+        let c2 = MatrixSymbol::new_builder()
+            .set_nfold_body(NFold::N4)
+            .set_translation_symbols(Some(vec![TranslationSymbol::B, TranslationSymbol::W]))
+            .build()
+            .unwrap();
         println!(
-            "{}",
-            GenericFraction::<i32>::from(-12) / GenericFraction::<i32>::from(12)
+            "{}, {}",
+            c1.seitz_matrix().unwrap(),
+            c2.seitz_matrix().unwrap()
         );
-        test("F 2 -2yd")
+        println!("{}", c1.seitz_matrix().unwrap().powi(2));
+        println!("{}", c2.seitz_matrix().unwrap().powi(2));
+        test("-I 41b")
     }
 
     #[test]
@@ -297,20 +315,9 @@ mod test {
         );
         default_list
             .iter()
-            .map(|&symbol| (symbol, xyz_repr(symbol)))
+            .map(|&symbol| xyz_repr(symbol))
             .enumerate()
-            .for_each(|(i, (symbol, xyz))| {
-                bar.set_message(format!("Processing {symbol}"));
-                let test_dir = Path::new("tests");
-                if !test_dir.exists() {
-                    create_dir(test_dir).expect("Failed to create dir");
-                }
-                let filename = test_dir
-                    .join(format!("{}_{}", i + 1, symbol.replace(' ', "_")))
-                    .with_extension("txt");
-                fs::write(filename, xyz).expect("Writing out  general positions error!");
-                bar.inc(1);
-            })
+            .for_each(|(i, xyz_repr)| {})
     }
 
     fn test(symbol_str: &str) {
@@ -324,5 +331,9 @@ mod test {
         let g = HallSymbolNotation::try_from_str(symbol_str).unwrap();
         let positions = g.general_positions();
         positions.text_format()
+    }
+
+    fn read_from_refs() -> Vec<Vec<String>> {
+        todo!()
     }
 }

@@ -11,7 +11,6 @@ mod parser;
 
 pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
-pub(crate) use matrices::{ORDER_12, ORDER_24, ORDER_48};
 pub use notations::*;
 use winnow::PResult;
 
