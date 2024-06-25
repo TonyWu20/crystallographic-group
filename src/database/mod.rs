@@ -2,8 +2,8 @@ mod space_group_table;
 mod sym_ops_order;
 
 pub use space_group_table::LookUpSpaceGroup;
-pub(crate) use space_group_table::DEFAULT_SPACE_GROUP_SYMBOLS;
-pub(crate) use space_group_table::FULL_SPACE_GROUP_SYMBOLS;
+pub use space_group_table::DEFAULT_SPACE_GROUP_SYMBOLS;
+pub use space_group_table::FULL_SPACE_GROUP_SYMBOLS;
 pub(crate) use sym_ops_order::{ORDER_12, ORDER_24, ORDER_48};
 
 /// Full list of space group hall symbols
