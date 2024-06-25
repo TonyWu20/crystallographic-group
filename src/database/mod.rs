@@ -1,6 +1,8 @@
+mod crystal_system;
 mod space_group_table;
 mod sym_ops_order;
 
+pub use crystal_system::CrystalSystem;
 pub use space_group_table::LookUpSpaceGroup;
 pub use space_group_table::DEFAULT_SPACE_GROUP_SYMBOLS;
 pub use space_group_table::FULL_SPACE_GROUP_SYMBOLS;
