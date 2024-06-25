@@ -147,5 +147,9 @@ mod test {
         let m2 = m2yd.seitz_matrix().unwrap() * m2z.seitz_matrix().unwrap();
         println!("{}", m2);
         println!("{}", m2yd.seitz_matrix().unwrap() * m1);
+        let mut m3 = MatrixSymbol::try_from_str(&mut "2\"").unwrap();
+        m3.set_rotation_axis(RotationAxis::Z);
+        println!("{}", m3);
+        println!("{}", m3.seitz_matrix().unwrap());
     }
 }

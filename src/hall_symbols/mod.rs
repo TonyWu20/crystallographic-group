@@ -230,7 +230,9 @@ impl Display for HallSymbolNotation {
 #[cfg(test)]
 mod test {
 
-    use indicatif::{ProgressBar, ProgressStyle};
+    use std::{collections::HashSet, fs::read_to_string, path::Path};
+
+    use indicatif::ProgressIterator;
 
     use crate::database::DEFAULT_SPACE_GROUP_SYMBOLS;
 
@@ -260,6 +262,12 @@ mod test {
             general_positions.num_of_general_pos()
         );
         println!("{general_positions}");
+    }
+    #[test]
+    fn test_150() {
+        let symbol_str = "P 3 2\"";
+        let p_150 = HallSymbolNotation::try_from_str(symbol_str).unwrap();
+        dbg!(p_150.matrix_symbols);
     }
     #[test]
     fn test_228() {
@@ -307,17 +315,33 @@ mod test {
     #[test]
     fn test_all() {
         let default_list = DEFAULT_SPACE_GROUP_SYMBOLS.get(2).unwrap();
-        let bar = ProgressBar::new(230).with_style(
-            ProgressStyle::with_template(
-                "{msg}\n[{elapsed_precise} {wide_bar:.cyan/blue} {pos:>7}/{len:7}]",
-            )
-            .unwrap(),
-        );
         default_list
             .iter()
-            .map(|&symbol| xyz_repr(symbol))
+            .progress()
+            .map(|&symbol| {
+                HashSet::<String>::from_iter(
+                    HallSymbolNotation::try_from_str(symbol)
+                        .unwrap()
+                        .general_positions()
+                        .pure_txt(),
+                )
+            })
             .enumerate()
-            .for_each(|(i, xyz_repr)| {})
+            .for_each(|(i, xyz_repr)| {
+                let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("refs")
+                    .join(format!("{}.txt", i + 1));
+                let ref_content = read_to_string(ref_path)
+                    .unwrap()
+                    .lines()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>();
+                if ref_content != xyz_repr {
+                    println!("{}: {}", i + 1, default_list[i]);
+                    println!("ref:\n{:?}", ref_content);
+                    println!("this:\n{:?}", xyz_repr);
+                }
+            })
     }
 
     fn test(symbol_str: &str) {

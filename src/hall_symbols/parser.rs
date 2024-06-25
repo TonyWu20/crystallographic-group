@@ -42,8 +42,9 @@ fn restore_information_in_matrix_symbols(symbols_vec: &mut [MatrixSymbol]) {
             match rotation_folds[i - 1] {
                 NFold::N2 | NFold::N4 => symbol.set_rotation_axis(RotationAxis::X),
                 NFold::N3 | NFold::N6 => {
-                    symbol
-                        .set_nfold_diag(crate::hall_symbols::matrix_symbol::NFoldDiag::SingleQuote);
+                    if matches!(symbol.nfold_diag(), NFoldDiag::None) {
+                        symbol.set_nfold_diag(NFoldDiag::SingleQuote)
+                    }
                     symbol.set_rotation_axis(RotationAxis::Z);
                 }
                 _ => (),
