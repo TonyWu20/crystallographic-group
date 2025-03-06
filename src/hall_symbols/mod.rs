@@ -12,9 +12,8 @@ use crate::{
 };
 
 use self::{
-    general_positions::GeneralPositions,
     lattice_symbol::LatticeSymbol,
-    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag, SeitzMatrix},
+    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag},
     origin_shift::OriginShift,
     parser::parse_hall_symbol,
 };
@@ -25,6 +24,9 @@ mod matrix_symbol;
 mod origin_shift;
 mod parser;
 mod translation_symbol;
+
+pub use general_positions::GeneralPositions;
+pub use matrix_symbol::SeitzMatrix;
 
 pub(crate) const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
 
