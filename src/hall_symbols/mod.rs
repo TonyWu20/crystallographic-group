@@ -4,7 +4,7 @@ use std::{
 };
 
 use nalgebra::{Matrix3, Vector3};
-use winnow::PResult;
+use winnow::ModalResult;
 
 use crate::{
     database::{SpaceGroupHallSymbol, ORDER_12, ORDER_24, ORDER_48},
@@ -53,7 +53,7 @@ impl HallSymbolNotation {
             origin_shift,
         }
     }
-    pub fn try_from_str(input: &str) -> PResult<Self> {
+    pub fn try_from_str(input: &str) -> ModalResult<Self> {
         let mut input = input;
         parse_hall_symbol(&mut input)
     }

@@ -1,4 +1,4 @@
-use winnow::PResult;
+use winnow::ModalResult;
 
 use crate::hall_symbols::{
     matrix_symbol::{MatrixSymbol, NFold, NFoldDiag},
@@ -7,7 +7,7 @@ use crate::hall_symbols::{
 
 use super::{lattice_symbol::LatticeSymbol, matrix_symbol::RotationAxis, HallSymbolNotation};
 
-pub fn parse_hall_symbol(input: &mut &str) -> PResult<HallSymbolNotation> {
+pub fn parse_hall_symbol(input: &mut &str) -> ModalResult<HallSymbolNotation> {
     let lattice_symbol = LatticeSymbol::try_from_str(input)?;
     let mut matrix_symbols: Vec<MatrixSymbol> = Vec::new();
     while let Ok(symbol) = MatrixSymbol::try_from_str(input) {
