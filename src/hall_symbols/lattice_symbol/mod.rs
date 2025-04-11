@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use nalgebra::Vector3;
-use winnow::PResult;
+use winnow::ModalResult;
 
 use self::parser::parse_lattice_symbol;
 
@@ -31,7 +31,7 @@ impl LatticeSymbol {
     pub fn new(minus_sign: bool, char: Lattices) -> Self {
         Self { minus_sign, char }
     }
-    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
+    pub fn try_from_str(input: &mut &str) -> ModalResult<Self> {
         parse_lattice_symbol(input)
     }
     pub fn get_translations(&self) -> Vec<Vector3<i32>> {

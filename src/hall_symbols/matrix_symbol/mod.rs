@@ -12,7 +12,7 @@ mod parser;
 pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
 pub use notations::*;
-use winnow::PResult;
+use winnow::ModalResult;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MatrixSymbol {
@@ -50,7 +50,7 @@ impl Display for MatrixSymbol {
 }
 
 impl MatrixSymbol {
-    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
+    pub fn try_from_str(input: &mut &str) -> ModalResult<Self> {
         parse_hall_matrix_symbol(input)
     }
 

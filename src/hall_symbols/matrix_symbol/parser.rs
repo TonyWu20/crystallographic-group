@@ -4,7 +4,7 @@ use winnow::{
     error::{AddContext, ContextError, ErrMode, StrContext, StrContextValue},
     stream::Stream,
     token::one_of,
-    PResult, Parser,
+    ModalResult, Parser,
 };
 
 use crate::hall_symbols::{matrix_symbol::NFold, translation_symbol::TranslationSymbol};
@@ -12,7 +12,7 @@ use crate::hall_symbols::{matrix_symbol::NFold, translation_symbol::TranslationS
 use super::{MatrixSymbol, NFoldDiag, NFoldSub, RotationAxis};
 
 /// Parse the matrix symbols in Hall notations.
-pub fn parse_hall_matrix_symbol(input: &mut &str) -> PResult<MatrixSymbol> {
+pub fn parse_hall_matrix_symbol(input: &mut &str) -> ModalResult<MatrixSymbol> {
     let (sign, nfold) = parse_sign_fold(input)?;
     if sign && matches!(nfold, NFold::Invalid) {
         let err_context = ContextError::<StrContext>::new().add_context(
@@ -66,7 +66,7 @@ pub fn parse_hall_matrix_symbol(input: &mut &str) -> PResult<MatrixSymbol> {
     }
 }
 
-fn parse_sign_fold(input: &mut &str) -> PResult<(bool, NFold)> {
+fn parse_sign_fold(input: &mut &str) -> ModalResult<(bool, NFold)> {
     preceded(
         space0,
         alt(("1", "-1", "2", "-2", "3", "-3", "4", "-4", "6", "-6")),
@@ -87,7 +87,7 @@ fn parse_sign_fold(input: &mut &str) -> PResult<(bool, NFold)> {
     .parse_next(input)
 }
 
-fn parse_axis(input: &mut &str) -> PResult<(RotationAxis, NFoldDiag)> {
+fn parse_axis(input: &mut &str) -> ModalResult<(RotationAxis, NFoldDiag)> {
     let axis_try = take_escaped(
         alt(('x', 'y', 'z', '\'', '"', '*')),
         '\\',
@@ -118,7 +118,7 @@ fn parse_axis(input: &mut &str) -> PResult<(RotationAxis, NFoldDiag)> {
 }
 
 /// Successful cases have been naturally return by matching
-fn parse_translations(input: &mut &str) -> PResult<(NFoldSub, Option<Vec<TranslationSymbol>>)> {
+fn parse_translations(input: &mut &str) -> ModalResult<(NFoldSub, Option<Vec<TranslationSymbol>>)> {
     let to_peek: &str = input;
     let (_, peeking) = one_of([
         '1', '2', '3', '4', '5', 'a', 'b', 'c', 'n', 'u', 'v', 'w', 'd',

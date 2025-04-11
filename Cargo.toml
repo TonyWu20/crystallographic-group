@@ -1,6 +1,6 @@
 [package]
 name = "crystallographic-group"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Tony Wu <tony.w21@gmail.com>"]
 edition = "2021"
 description = "Provide crystallographic group reference and useful information, e.g. lattice coordinates and symmetry operation matrices."
@@ -11,7 +11,7 @@ license = "MIT"
 
 [dependencies]
 nalgebra = "0.33.0"
-winnow = "0.6.13"
+winnow = "0.7.6"
 fraction = "0.15.3"
 
 [dev-dependencies]

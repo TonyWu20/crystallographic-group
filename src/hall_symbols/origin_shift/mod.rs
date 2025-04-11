@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::Neg};
 
 use nalgebra::{Matrix4, Vector4};
-use winnow::PResult;
+use winnow::ModalResult;
 
 use crate::utils::positive_mod_stbn_i32;
 
@@ -27,7 +27,7 @@ impl Default for OriginShift {
 }
 
 impl OriginShift {
-    pub fn try_from_str(input: &mut &str) -> PResult<Self> {
+    pub fn try_from_str(input: &mut &str) -> ModalResult<Self> {
         parse_origin_shift(input)
     }
 
