@@ -294,16 +294,14 @@ mod test {
     #[test]
     fn test_80() {
         let c1 = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N4)
-            .set_nfold_sub(NFoldSub::N1)
-            .set_translation_symbols(Some(vec![TranslationSymbol::B]))
-            .build()
-            .unwrap();
+            .nfold_body(NFold::N4)
+            .nfold_sub(NFoldSub::N1)
+            .translation_symbols(vec![TranslationSymbol::B])
+            .build();
         let c2 = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N4)
-            .set_translation_symbols(Some(vec![TranslationSymbol::B, TranslationSymbol::W]))
-            .build()
-            .unwrap();
+            .nfold_body(NFold::N4)
+            .translation_symbols(vec![TranslationSymbol::B, TranslationSymbol::W])
+            .build();
         println!(
             "{}, {}",
             c1.seitz_matrix().unwrap(),

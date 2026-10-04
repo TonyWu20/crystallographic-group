@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use bon::Builder;
+
 use self::parser::parse_hall_matrix_symbol;
 
 use crate::hall_symbols::{errors::HallParseError, translation_symbol::TranslationSymbol};
@@ -9,19 +11,22 @@ mod matrices;
 mod notations;
 mod parser;
 
-pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
 pub use notations::*;
 
 pub(crate) use parser::matrix_symbol;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Builder)]
 pub struct MatrixSymbol {
     // `-` or not
+    #[builder(default)]
     minus_sign: bool,
     nfold_body: NFold,
+    #[builder(default)]
     nfold_sub: NFoldSub,
+    #[builder(default)]
     nfold_diag: NFoldDiag,
+    #[builder(default)]
     rotation_axis: RotationAxis,
     translation_symbols: Option<Vec<TranslationSymbol>>,
 }
@@ -55,8 +60,10 @@ impl MatrixSymbol {
         parse_hall_matrix_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
 
+    /// Public entry to the `bon`-generated typestate builder.
+    /// Omitting `nfold_body` is a compile error.
     pub fn new_builder() -> MatrixSymbolBuilder {
-        MatrixSymbolBuilder::default()
+        Self::builder()
     }
 
     pub fn minus_sign(&self) -> bool {
@@ -107,16 +114,12 @@ impl MatrixSymbol {
 #[derive(Debug, Clone)]
 pub enum MatrixSymbolError {
     Invalid(MatrixSymbol),
-    IncompleteFields,
 }
 
 impl Display for MatrixSymbolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MatrixSymbolError::Invalid(symbol) => write!(f, "Invalid symbol {:?}", symbol),
-            MatrixSymbolError::IncompleteFields => {
-                f.write_str("Incomplete fields of `MatrixSymbol`")
-            }
         }
     }
 }
@@ -133,16 +136,12 @@ mod test {
 
     #[test]
     fn matrix_symbol_build() {
-        let m2z = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N2)
-            .build()
-            .unwrap();
+        let m2z = MatrixSymbol::new_builder().nfold_body(NFold::N2).build();
         let m2yd = MatrixSymbol::new_builder()
-            .set_nfold_body(NFold::N2)
-            .set_rotation_axis(RotationAxis::Y)
-            .set_translation_symbols(Some(vec![TranslationSymbol::D]))
-            .build()
-            .unwrap();
+            .nfold_body(NFold::N2)
+            .rotation_axis(RotationAxis::Y)
+            .translation_symbols(vec![TranslationSymbol::D])
+            .build();
         let m1 = m2z.seitz_matrix().unwrap() * m2yd.seitz_matrix().unwrap();
         println!("{}", m1);
         let m2 = m2yd.seitz_matrix().unwrap() * m2z.seitz_matrix().unwrap();

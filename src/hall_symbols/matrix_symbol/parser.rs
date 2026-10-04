@@ -38,7 +38,7 @@ pub(crate) fn matrix_symbol<'a>()
         just('\'').map(|_| (RotationAxis::Omitted, NFoldDiag::SingleQuote)),
         just('"').map(|_| (RotationAxis::Omitted, NFoldDiag::DoubleQuote)),
         just('*').map(|_| (RotationAxis::Omitted, NFoldDiag::Asterisk)),
-        // Escaped diagnostic chars, mirroring the winnow `take_escaped` form.
+        // Escaped diagnostic chars: a backslash before `"` or `'`.
         just('\\')
             .ignore_then(one_of("\"'"))
             .map(|escaped: char| match escaped {
@@ -69,22 +69,23 @@ pub(crate) fn matrix_symbol<'a>()
         .then(nfold_sub.then(translation_symbols))
         .map(
             |((((_leading, minus_sign), nfold_body), axis), (nfold_sub, translation_symbols))| {
-                let mut builder = MatrixSymbol::new_builder();
-                builder
-                    .set_minus_sign(minus_sign.is_some())
-                    .set_nfold_body(nfold_body);
-                if let Some((rotation_axis, nfold_diag)) = axis {
-                    builder.set_rotation_axis(rotation_axis);
-                    builder.set_nfold_diag(nfold_diag);
+                // All optional fields fall back to their defaults, so the
+                // builder never has to branch. Omitting the
+                // `translation_symbols` setter leaves the field `None`.
+                // `nfold_body` is always set, so `build()` cannot fail.
+                let builder = MatrixSymbol::new_builder()
+                    .minus_sign(minus_sign.is_some())
+                    .nfold_body(nfold_body)
+                    .rotation_axis(
+                        axis.map(|(rotation_axis, _)| rotation_axis)
+                            .unwrap_or_default(),
+                    )
+                    .nfold_diag(axis.map(|(_, nfold_diag)| nfold_diag).unwrap_or_default())
+                    .nfold_sub(nfold_sub.unwrap_or_default());
+                match translation_symbols {
+                    Some(symbols) => builder.translation_symbols(symbols).build(),
+                    None => builder.build(),
                 }
-                if let Some(nfold_sub) = nfold_sub {
-                    builder.set_nfold_sub(nfold_sub);
-                }
-                builder.set_translation_symbols(translation_symbols);
-                // `nfold_body` is always set, so the build cannot fail.
-                builder
-                    .build()
-                    .expect("matrix symbol build: nfold_body is set")
             },
         )
 }

@@ -10,6 +10,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bon = "3.10"
 nalgebra = "0.33.0"
 chumsky = "0.13"
 ariadne = { version = "0.6", features = ["auto-color"] }
