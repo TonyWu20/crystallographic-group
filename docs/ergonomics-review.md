@@ -12,6 +12,8 @@ Status: draft. Decisions are recorded in the table below as they are made.
 | D4 | Replace the hand-written `MatrixSymbolBuilder` with the `bon` crate. | Done (session `bon-builder`, design in the D4 section) |
 | D5 | Monitoring of delegated long tasks: event-driven, no poll loop. Standard form: `nohup bash -c 'rushi run task "task" && rushi run main "done" || rushi run main "failed"'`. The back message uses the start form, no `--no-run`: the main session is stopped when the task ends, and only the start form wakes it. `--no-run` appends to a live loop only. | Decided, corrected |
 | D6 | Execution plan: run the findings pass and D4 as two headless sessions, chained in that order. Both share files, so they must not run in parallel. | Decided |
+| D7 | Finding 4: delete the `From<&str>` and `From<&char>` impls for `NFoldSub`. They map unknown input to `None` silently. The parser maps digits directly. | Decided |
+| D8 | Finding 7: promote `restore_information_in_matrix_symbols` to a public, documented function. Re-export it at the `hall_symbols` root. | Decided |
 
 ## Baseline (verified 2026-10-04)
 
@@ -231,8 +233,25 @@ Two new nits from the migration:
   `sessions/<task>/notify.log`.
 - Both sessions are done and verified in the main session: clippy at zero
   warnings, 16 of 16 tests, owned-value error, no rule-table duplication.
-- Next: the two `HallParseError` nits, then findings 5, 8, 9, 10, 12, 13,
-  14, 15, 16.
+- Finding 4 status: the chumsky rewrite closed it at the parse boundary.
+  The parser only accepts digits 12345, so the unknown-input path is
+  unreachable there. D7 removes the remaining silent `From` impls.
+- Queue: five headless sessions run in one serial chain, per D5 and D6.
+  Each step is followed by a `cargo test --lib` and clippy gate. The
+  final step pokes this session.
+
+  1. `parser-hardening`: the two `HallParseError` nits, D7, D8. Brief:
+     `docs/task-parser-hardening.md`.
+  2. `table-coupling`: findings 9, 10, 11. Brief:
+     `docs/task-table-coupling.md`.
+  3. `space-group`: findings 5, 8, 12. Brief:
+     `docs/task-space-group.md`.
+  4. `seitz-invariants`: findings 13 to 16. Brief:
+     `docs/task-seitz-invariants.md`.
+  5. `docs-and-example`: findings 17 to 20. Brief:
+     `docs/task-docs-and-example.md`.
+- The order puts table coupling before `SpaceGroup`. The new center type
+  exposes the typed reference values that the table work produces.
 
 ## Findings pass outcome
 
