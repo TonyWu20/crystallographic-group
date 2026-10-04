@@ -19,3 +19,6 @@ Cargo.lock
 .*.icloud
 # Test output
 *.txt
+# Reference data for test_all: input, not output
+!refs/*.txt
+sessions
