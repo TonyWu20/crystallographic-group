@@ -10,12 +10,7 @@ use crate::{
     utils::positive_mod_stbn_i32,
 };
 
-use self::{
-    lattice_symbol::LatticeSymbol,
-    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag},
-    origin_shift::OriginShift,
-    parser::parse_hall_symbol,
-};
+use self::parser::parse_hall_symbol;
 
 mod errors;
 mod general_positions;
@@ -27,8 +22,11 @@ mod translation_symbol;
 
 pub use errors::HallParseError;
 pub use general_positions::GeneralPositions;
-pub use matrix_symbol::SeitzMatrix;
+pub use lattice_symbol::{LatticeSymbol, Lattices};
+pub use matrix_symbol::{MatrixSymbol, NFold, NFoldDiag, NFoldSub, RotationAxis, SeitzMatrix};
+pub use origin_shift::OriginShift;
 pub use parser::restore_information_in_matrix_symbols;
+pub use translation_symbol::TranslationSymbol;
 
 pub(crate) const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
 
@@ -57,6 +55,21 @@ impl HallSymbolNotation {
     }
     pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_hall_symbol(input)
+    }
+
+    /// The lattice symbol of the notation.
+    pub fn lattice_symbol(&self) -> LatticeSymbol {
+        self.lattice_symbol
+    }
+
+    /// The generator matrix symbols of the notation.
+    pub fn matrix_symbols(&self) -> &[MatrixSymbol] {
+        &self.matrix_symbols
+    }
+
+    /// The origin shift of the notation.
+    pub fn origin_shift(&self) -> OriginShift {
+        self.origin_shift
     }
 
     fn num_generators(&self) -> usize {
@@ -206,9 +219,17 @@ impl HallSymbolNotation {
     }
 }
 
-impl From<SpaceGroupHallSymbol> for HallSymbolNotation {
-    fn from(value: SpaceGroupHallSymbol) -> Self {
-        Self::try_from_str(value.get_hall_symbol()).unwrap()
+/// Fallible conversion from a table setting to the parse form.
+///
+/// Parses the setting's Hall symbol string. A table entry that does not
+/// parse is returned as a [`HallParseError`], not panicked on. This
+/// replaces the former infallible `From` impl, whose `.unwrap()` made a
+/// bad table entry a panic.
+impl TryFrom<SpaceGroupHallSymbol> for HallSymbolNotation {
+    type Error = HallParseError;
+
+    fn try_from(value: SpaceGroupHallSymbol) -> Result<Self, Self::Error> {
+        Self::try_from_str(value.get_hall_symbol())
     }
 }
 

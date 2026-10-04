@@ -1,3 +1,5 @@
+use super::CrystalSystem;
+
 /// A typed, range-checked row index into the space group reference tables.
 ///
 /// The inner `u16` is a zero-based row position. Construction is
@@ -113,6 +115,30 @@ impl SpaceGroupTable<'_> {
     /// The Hall symbols of the table, in row order.
     pub fn hall_symbols(&self) -> &[&'static str] {
         self.hall
+    }
+
+    /// The space group number in 1..=230 of a row.
+    ///
+    /// The row's number code carries an optional choice marker after a
+    /// `:`, e.g. `"3:b"`. The number is the code without the marker.
+    pub fn space_group_number(&self, row: u16) -> Option<u16> {
+        let code = self.number(row)?;
+        let digits = code.split(':').next()?;
+        digits.parse::<u16>().ok()
+    }
+
+    /// The rows of this table whose space group number belongs to
+    /// `system`, in row order.
+    pub fn rows_of(&self, system: CrystalSystem) -> Vec<SpaceGroupNumber> {
+        (0..self.len() as u16)
+            .filter_map(|row| {
+                let number = self.space_group_number(row)?;
+                match CrystalSystem::of_number(number) {
+                    Some(found) if found == system => SpaceGroupNumber::new(row),
+                    _ => None,
+                }
+            })
+            .collect()
     }
 
     /// The space group number of the first row whose full

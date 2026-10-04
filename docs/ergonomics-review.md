@@ -297,3 +297,31 @@ Done. Status: `sessions/bon-builder/status`. Check record:
 - End state: `cargo build` clean, `cargo clippy --lib` zero warnings,
   `cargo test --lib` 16 of 16 including `test_all`. No test was added
   or weakened.
+
+## Space group outcome (session `space-group`, 2026-10-05)
+
+Done. Status: `sessions/space-group/status`. Notes:
+`sessions/space-group/notes.md`.
+
+- `SpaceGroup` is the public center. It is re-exported at the crate
+  root. It holds the lattice, the generators, and the origin shift,
+  plus its all-settings table row.
+- Entry paths: `SpaceGroup::try_from_str` (parse plus table lookup,
+  `SpaceGroupError::Parse` or `SpaceGroupError::NotInTable`),
+  `SpaceGroup::new` (structured parts), and
+  `From<HallSymbolNotation>`.
+- Finding 5 is closed. `number()`, `hm_symbol()`, `crystal_system()`,
+  and `general_positions()` return owned or `&'static` values.
+- Finding 8 is closed. The panicking `From` impl is now a `TryFrom`
+  with `HallParseError`. A bad table entry is a `Result`, not a
+  panic.
+- Finding 12 is closed. `CrystalSystem::of_number` maps the standard
+  ITC ranges 1-2, 3-15, 16-74, 75-142, 143-167, 168-194, 195-230.
+  `SpaceGroupTable::rows_of` filters by system.
+  `SpaceGroupHallSymbol::crystal_system` exposes the system on the
+  reference type.
+- The range split was verified against the table content. Every row's
+  lattice letter belongs to its system's allowed set.
+- End state: `cargo clippy --lib` zero warnings, `cargo test --lib`
+  22 of 22 including `test_all`. Six new tests sit on top of the 16
+  baseline tests. No baseline test was weakened or removed.

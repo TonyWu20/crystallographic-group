@@ -60,4 +60,12 @@ impl SpaceGroupHallSymbol {
     pub fn get_space_group_number_code(&self) -> &'static str {
         ALL_SPACE_GROUP_SYMBOLS[0][self.0.row() as usize]
     }
+
+    /// The crystal system of this setting, from the standard range of the
+    /// space group number.
+    pub fn crystal_system(self) -> Option<CrystalSystem> {
+        let table = SpaceGroupTable::all();
+        let number = table.space_group_number(self.0.row())?;
+        CrystalSystem::of_number(number)
+    }
 }
