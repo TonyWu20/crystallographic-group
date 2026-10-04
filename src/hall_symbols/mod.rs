@@ -208,7 +208,7 @@ impl HallSymbolNotation {
 
 impl From<SpaceGroupHallSymbol> for HallSymbolNotation {
     fn from(value: SpaceGroupHallSymbol) -> Self {
-        Self::try_from_str(&value.get_hall_symbol()).unwrap()
+        Self::try_from_str(value.get_hall_symbol()).unwrap()
     }
 }
 
@@ -237,7 +237,7 @@ mod test {
 
     use indicatif::ProgressIterator;
 
-    use crate::database::DEFAULT_SPACE_GROUP_SYMBOLS;
+    use crate::database::SpaceGroupTable;
 
     use super::{
         matrix_symbol::{MatrixSymbol, NFold, NFoldSub},
@@ -315,8 +315,9 @@ mod test {
 
     #[test]
     fn test_all() {
-        let default_list = DEFAULT_SPACE_GROUP_SYMBOLS.get(2).unwrap();
-        default_list
+        let table = SpaceGroupTable::per_number();
+        let hall_symbols = table.hall_symbols();
+        hall_symbols
             .iter()
             .progress()
             .map(|&symbol| {
@@ -338,7 +339,7 @@ mod test {
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>();
                 if ref_content != xyz_repr {
-                    println!("{}: {}", i + 1, default_list[i]);
+                    println!("{}: {}", i + 1, hall_symbols[i]);
                     println!("ref:\n{:?}", ref_content);
                     println!("this:\n{:?}", xyz_repr);
                 }
