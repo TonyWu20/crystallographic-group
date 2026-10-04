@@ -1,8 +1,11 @@
 use fraction::{GenericFraction, Zero};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::hall_symbols::{
-    matrix_symbol::RotationType, SymmetryElement, SEITZ_TRANSLATE_BASE_NUMBER,
+use crate::{
+    hall_symbols::{
+        matrix_symbol::RotationType, SymmetryElement, SEITZ_TRANSLATE_BASE_NUMBER,
+    },
+    utils::positive_mod_stbn_i32,
 };
 use std::{
     cmp::Ordering,
@@ -15,7 +18,15 @@ use super::{SeitzMatrix, SeitzMatrixError};
 
 impl Hash for SeitzMatrix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        // Hash the rotation part as stored and the translation part
+        // normalized to positive residues modulo 12.
+        // `PartialEq` compares translation parts modulo 12,
+        // so equal values hash equal.
+        self.rotation_part().hash(state);
+        self
+            .translation_part()
+            .map(positive_mod_stbn_i32)
+            .hash(state);
     }
 }
 
@@ -65,7 +76,12 @@ impl SeitzMatrix {
         self.rotation_part() != reference.rotation_part()
             && self.rotation_part().map(|v| -v) != reference.rotation_part()
     }
-    pub fn eigenvector(&self) -> Vector3<i32> {
+    /// The canonical trial eigenvector of the rotation part.
+    ///
+    /// The search space is the 26 nonzero vectors in `{-1, 0, 1}^3`.
+    /// The result is `None` when the kernel of `R - det(R) * I`
+    /// holds no trial vector.
+    pub fn eigenvector(&self) -> Option<Vector3<i32>> {
         let m = self.rotation_part();
         let det = self.det();
         let m_i = m - Matrix3::<i32>::identity().map(|v| v * det);
@@ -91,7 +107,7 @@ impl SeitzMatrix {
                     .collect::<Vec<Vector3<i32>>>()
             })
             .collect();
-        let choice = eigen_trails
+        eigen_trails
             .iter()
             .filter(|f| match f.z {
                 v if v > 0 => true,
@@ -104,8 +120,6 @@ impl SeitzMatrix {
             })
             .cloned()
             .next()
-            .unwrap();
-        choice
     }
     pub fn rotation_type(&self) -> Result<RotationType, SeitzMatrixError> {
         let det = self.det();
@@ -305,28 +319,34 @@ impl SeitzMatrix {
     }
 }
 
+/// Translation addition.
+///
+/// Adds the translation part of the right operand to the left operand
+/// and keeps the left rotation part. The translation part of the result
+/// holds positive residues modulo 12. This is not a group operation.
+/// Use `Mul` to compose symmetry operations.
 impl Add for SeitzMatrix {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+    fn add(mut self, rhs: Self) -> Self::Output {
+        let tr = self.translation_part() + rhs.translation_part();
+        self.set_translation_part(tr.map(positive_mod_stbn_i32));
+        self
     }
 }
 
+/// Translation addition.
+///
+/// Adds a translation vector to the translation part of the matrix
+/// and keeps the rotation part. The translation part of the result
+/// holds positive residues modulo 12.
 impl Add<Vector3<i32>> for SeitzMatrix {
     type Output = Self;
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn add(self, rhs: Vector3<i32>) -> Self::Output {
-        let mut mat = self.0;
-        let mut column = mat.column(3) + rhs.to_homogeneous();
-        column.iter_mut().enumerate().for_each(|(i, v)| {
-            if i < 3 {
-                let new_v = *v % SEITZ_TRANSLATE_BASE_NUMBER;
-                *v = new_v;
-            }
-        });
-        mat.set_column(3, &column);
-        Self(mat)
+    fn add(mut self, rhs: Vector3<i32>) -> Self::Output {
+        let tr = self.translation_part() + rhs;
+        self.set_translation_part(tr.map(positive_mod_stbn_i32));
+        self
     }
 }
 
@@ -352,13 +372,22 @@ impl Mul for SeitzMatrix {
     }
 }
 
+/// Prints the Jones faithful representation, the rotation eigenvector,
+/// and the fraction Seitz matrix.
+///
+/// `Display` never panics. When `eigenvector()` is `None`,
+/// the eigenvector field prints `None`.
 impl Display for SeitzMatrix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let eigen = self
+            .eigenvector()
+            .map(|v| format!("{v:?}"))
+            .unwrap_or_else(|| "None".to_string());
         write!(
             f,
-            "{} | {:?}\n{}",
+            "{} | {}\n{}",
             self.jones_faithful_repr(),
-            self.eigenvector(),
+            eigen,
             self.to_fraction()
         )
     }

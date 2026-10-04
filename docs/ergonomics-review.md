@@ -325,3 +325,26 @@ Done. Status: `sessions/space-group/status`. Notes:
 - End state: `cargo clippy --lib` zero warnings, `cargo test --lib`
   22 of 22 including `test_all`. Six new tests sit on top of the 16
   baseline tests. No baseline test was weakened or removed.
+
+## Seitz invariants outcome (session `seitz-invariants`, 2026-10-05)
+
+Done. Status: `sessions/seitz-invariants/status`. Notes:
+`sessions/seitz-invariants/notes.md`.
+
+- Finding 13 is closed. `Hash` hashes the rotation part as stored.
+  It normalizes the translation part to positive residues modulo 12.
+  The new test `test_hash_invariant` proves equal values hash equal.
+  It also proves a `HashSet` keeps no duplicate.
+- Finding 14 is closed. `eigenvector()` returns `Option`. `Display`
+  prints `None` in the eigenvector field when no trial vector exists.
+  `Display` never panics.
+- Finding 15 is closed. `Add` for two `SeitzMatrix` values adds only
+  the translation parts. The doc comment states that this is not a
+  group operation. No internal call site used the old behavior.
+- Finding 16 is closed. `SeitzMatrix + Vector3` normalizes to positive
+  residues. The path now routes through `set_translation_part`.
+  That also repairs the bottom row. The old path wrote `2` into the
+  homogeneous coordinate.
+- End state: `cargo clippy --lib` zero warnings, `cargo test --lib`
+  23 of 23 including `test_all` and the new hash-invariant test.
+  `test_all` prints no diff against `refs/`.

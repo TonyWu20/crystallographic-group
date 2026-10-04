@@ -51,11 +51,34 @@ trait RotationMatrix {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
+    use std::collections::{hash_map::DefaultHasher, HashSet};
+    use std::hash::{Hash, Hasher};
 
     use nalgebra::{Matrix3, Matrix4, Vector3};
 
     use super::SeitzMatrix;
+
+    #[test]
+    fn test_hash_invariant() {
+        // The translation parts 2 and -10 are equal modulo 12.
+        let m1 = SeitzMatrix::new(Matrix4::new(
+            0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1, 2, 0, 0, 0, 1,
+        ));
+        let m2 = SeitzMatrix::new(Matrix4::new(
+            0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1, -10, 0, 0, 0, 1,
+        ));
+        assert_eq!(m1, m2);
+
+        let mut h1 = DefaultHasher::new();
+        m1.hash(&mut h1);
+        let mut h2 = DefaultHasher::new();
+        m2.hash(&mut h2);
+        assert_eq!(h1.finish(), h2.finish());
+
+        let set: HashSet<SeitzMatrix> = [m1, m2].into_iter().collect();
+        assert_eq!(set.len(), 1);
+        assert!(set.contains(&m1));
+    }
 
     #[test]
     fn test_sm_eq() {
