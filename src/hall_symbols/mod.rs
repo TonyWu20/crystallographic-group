@@ -380,6 +380,7 @@ mod test {
     fn test_all() {
         let table = SpaceGroupTable::per_number();
         let hall_symbols = table.hall_symbols();
+        let mut mismatches: Vec<usize> = Vec::new();
         hall_symbols
             .iter()
             .progress()
@@ -405,8 +406,14 @@ mod test {
                     println!("{}: {}", i + 1, hall_symbols[i]);
                     println!("ref:\n{:?}", ref_content);
                     println!("this:\n{:?}", formula_set);
+                    mismatches.push(i + 1);
                 }
-            })
+            });
+        assert!(
+            mismatches.is_empty(),
+            "reference mismatches for space group numbers {:?}. The diff is printed above each entry.",
+            mismatches
+        );
     }
 
     fn test(symbol_str: &str) {
