@@ -49,7 +49,15 @@ pub(crate) fn matrix_symbol<'a>()
             }),
     ));
     let nfold_sub = one_of("12345")
-        .map(|digit: char| NFoldSub::from(&digit))
+        .map(|digit: char| match digit {
+            '1' => NFoldSub::N1,
+            '2' => NFoldSub::N2,
+            '3' => NFoldSub::N3,
+            '4' => NFoldSub::N4,
+            '5' => NFoldSub::N5,
+            // `one_of` above restricts the input to 12345.
+            _ => unreachable!(),
+        })
         .or_not();
     let translation_symbols = one_of("abcnuvwd")
         .repeated()

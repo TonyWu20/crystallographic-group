@@ -48,32 +48,6 @@ impl Display for NFoldSub {
     }
 }
 
-impl From<&str> for NFoldSub {
-    fn from(value: &str) -> Self {
-        match value {
-            "1" => Self::N1,
-            "2" => Self::N2,
-            "3" => Self::N3,
-            "4" => Self::N4,
-            "5" => Self::N5,
-            _ => Self::None,
-        }
-    }
-}
-
-impl From<&char> for NFoldSub {
-    fn from(value: &char) -> Self {
-        match value {
-            '1' => Self::N1,
-            '2' => Self::N2,
-            '3' => Self::N3,
-            '4' => Self::N4,
-            '5' => Self::N5,
-            _ => Self::None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NFoldDiag {
     #[default]
