@@ -1,13 +1,20 @@
 use std::{cmp::Ordering, fmt::Display};
 
+/// The fold body of a matrix symbol: the rotation or inversion fold.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NFold {
+    /// An unrecognized fold.
     Invalid,
+    /// The identity fold.
     #[default]
     N1,
+    /// A two-fold rotation.
     N2,
+    /// A three-fold rotation.
     N3,
+    /// A four-fold rotation.
     N4,
+    /// A six-fold rotation.
     N6,
 }
 
@@ -24,14 +31,21 @@ impl Display for NFold {
     }
 }
 
+/// The sub-number of a rotation fold.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NFoldSub {
+    /// No sub-number.
     #[default]
     None,
+    /// Sub-number 1.
     N1,
+    /// Sub-number 2.
     N2,
+    /// Sub-number 3.
     N3,
+    /// Sub-number 4.
     N4,
+    /// Sub-number 5.
     N5,
 }
 
@@ -48,38 +62,19 @@ impl Display for NFoldSub {
     }
 }
 
-impl From<&str> for NFoldSub {
-    fn from(value: &str) -> Self {
-        match value {
-            "1" => Self::N1,
-            "2" => Self::N2,
-            "3" => Self::N3,
-            "4" => Self::N4,
-            "5" => Self::N5,
-            _ => Self::None,
-        }
-    }
-}
-
-impl From<&char> for NFoldSub {
-    fn from(value: &char) -> Self {
-        match value {
-            '1' => Self::N1,
-            '2' => Self::N2,
-            '3' => Self::N3,
-            '4' => Self::N4,
-            '5' => Self::N5,
-            _ => Self::None,
-        }
-    }
-}
-
+/// The diagnostic character of a rotation fold.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NFoldDiag {
+    /// No diagnostic.
     #[default]
     None,
+    /// A single quote: the second rotation about a twofold or
+    /// four-fold axis.
     SingleQuote,
+    /// A double quote: the second rotation about a three-fold or
+    /// six-fold axis.
     DoubleQuote,
+    /// An asterisk: the third rotation about the body diagonal.
     Asterisk,
 }
 
@@ -94,11 +89,16 @@ impl Display for NFoldDiag {
     }
 }
 
+/// The rotation axis of a matrix symbol.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RotationAxis {
+    /// The axis is implied by position and not written.
     Omitted,
+    /// The `a` axis.
     X,
+    /// The `b` axis.
     Y,
+    /// The `c` axis.
     #[default]
     Z,
 }
@@ -114,6 +114,12 @@ impl Display for RotationAxis {
     }
 }
 
+/// The rotation type of a Seitz matrix, from its determinant and
+/// trace.
+///
+/// `E` is the identity. `N2` to `N6` are proper rotations. `I` is the
+/// inversion. `M`, `M3`, `M4`, and `M6` are improper rotations with a
+/// mirror.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum RotationType {
     #[default]

@@ -1,8 +1,11 @@
 use fraction::{GenericFraction, Zero};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::hall_symbols::{
-    matrix_symbol::RotationType, SymmetryElement, SEITZ_TRANSLATE_BASE_NUMBER,
+use crate::{
+    hall_symbols::{
+        matrix_symbol::RotationType, SymmetryElement, SEITZ_TRANSLATE_BASE_NUMBER,
+    },
+    utils::positive_mod_stbn_i32,
 };
 use std::{
     cmp::Ordering,
@@ -15,7 +18,15 @@ use super::{SeitzMatrix, SeitzMatrixError};
 
 impl Hash for SeitzMatrix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        // Hash the rotation part as stored and the translation part
+        // normalized to positive residues modulo 12.
+        // `PartialEq` compares translation parts modulo 12,
+        // so equal values hash equal.
+        self.rotation_part().hash(state);
+        self
+            .translation_part()
+            .map(positive_mod_stbn_i32)
+            .hash(state);
     }
 }
 
@@ -52,20 +63,36 @@ impl SymmetryElement for SeitzMatrix {
 }
 
 impl SeitzMatrix {
+    /// The identity operation: no rotation, no translation.
     pub fn identity() -> Self {
         Self(Matrix4::identity())
     }
+
+    /// The inversion operation: the `-1` rotation with no translation.
     pub fn inversion() -> Self {
         Self(Matrix3::identity().map(|v: i32| -v).to_homogeneous())
     }
+
+    /// Build a matrix from a raw homogeneous 4x4 matrix.
+    ///
+    /// The translation part does not need to be normalized. Equality
+    /// and hashing normalize it modulo 12.
     pub fn new(v: Matrix4<i32>) -> Self {
         Self(v)
     }
+
+    /// Whether `self` and `reference` disagree on the rotation part
+    /// up to a sign flip of the whole rotation.
     pub fn is_unique_rotation(&self, reference: &Self) -> bool {
         self.rotation_part() != reference.rotation_part()
             && self.rotation_part().map(|v| -v) != reference.rotation_part()
     }
-    pub fn eigenvector(&self) -> Vector3<i32> {
+    /// The canonical trial eigenvector of the rotation part.
+    ///
+    /// The search space is the 26 nonzero vectors in `{-1, 0, 1}^3`.
+    /// The result is `None` when the kernel of `R - det(R) * I`
+    /// holds no trial vector.
+    pub fn eigenvector(&self) -> Option<Vector3<i32>> {
         let m = self.rotation_part();
         let det = self.det();
         let m_i = m - Matrix3::<i32>::identity().map(|v| v * det);
@@ -91,7 +118,7 @@ impl SeitzMatrix {
                     .collect::<Vec<Vector3<i32>>>()
             })
             .collect();
-        let choice = eigen_trails
+        eigen_trails
             .iter()
             .filter(|f| match f.z {
                 v if v > 0 => true,
@@ -104,9 +131,11 @@ impl SeitzMatrix {
             })
             .cloned()
             .next()
-            .unwrap();
-        choice
     }
+    /// The rotation type of the matrix, from its determinant and trace.
+    ///
+    /// `Err` when the rotation part is not a valid integer rotation
+    /// matrix.
     pub fn rotation_type(&self) -> Result<RotationType, SeitzMatrixError> {
         let det = self.det();
         let trace = self.trace();
@@ -125,19 +154,6 @@ impl SeitzMatrix {
         }
     }
 
-    pub(crate) fn proper_rotation(&self) -> Option<Matrix3<i32>> {
-        if self
-            .rotation_type()
-            .is_ok_and(|typ| !matches!(typ, RotationType::E | RotationType::I))
-        {
-            let det = self.det();
-            let rotation = self.0.fixed_resize::<3, 3>(1).map(|v| v * det);
-            Some(rotation)
-        } else {
-            None
-        }
-    }
-
     fn det(&self) -> i32 {
         self.to_f64_mat().fixed_resize::<3, 3>(1.0).determinant() as i32
     }
@@ -146,7 +162,11 @@ impl SeitzMatrix {
         self.0.trace() - 1
     }
 
-    // Property of cyclic group
+    /// Raise the operation to an integer power.
+    ///
+    /// A positive exponent composes the matrix with itself. A negative
+    /// exponent composes the inverse. The group is finite, so every
+    /// operation has an inverse.
     pub fn powi(&self, exponent: i32) -> Self {
         match exponent.cmp(&0) {
             Ordering::Less => {
@@ -170,10 +190,13 @@ impl SeitzMatrix {
         }
     }
 
+    /// The raw homogeneous 4x4 matrix.
     pub fn matrix(&self) -> Matrix4<i32> {
         self.0
     }
 
+    /// The matrix with the rotation part as `f64` and the translation
+    /// part divided by the 12-fold base.
     pub fn to_f64_mat(self) -> Matrix4<f64> {
         let mut mat_f64: Matrix4<f64> = self.0.map(|v| v as f64);
         mat_f64
@@ -188,6 +211,8 @@ impl SeitzMatrix {
         mat_f64
     }
 
+    /// The matrix with the rotation part as exact fractions and the
+    /// translation part divided by the 12-fold base.
     pub fn to_fraction(self) -> Matrix4<GenericFraction<i32>> {
         let mut mat_frac: Matrix4<GenericFraction<i32>> = self.0.map(GenericFraction::<i32>::from);
         mat_frac
@@ -202,6 +227,11 @@ impl SeitzMatrix {
         mat_frac
     }
 
+    /// The inverse operation.
+    ///
+    /// `None` when the matrix is not invertible. The inverse of a valid
+    /// Seitz matrix is always exact, so a failure means the input was
+    /// not a valid operation.
     pub fn try_inverse(&self) -> Option<Self> {
         let mut inv = self.to_f64_mat().try_inverse()?;
         inv.column_mut(3).iter_mut().enumerate().for_each(|(i, v)| {
@@ -211,18 +241,26 @@ impl SeitzMatrix {
         });
         Some(Self(inv.map(|v| v as i32)))
     }
+
+    /// The 3x3 rotation part.
     pub fn rotation_part(&self) -> Matrix3<i32> {
         self.0.fixed_resize::<3, 3>(1)
     }
+
+    /// The translation part, in units of the 12-fold base.
     pub fn translation_part(&self) -> Vector3<i32> {
         self.0.column(3).xyz()
     }
+
+    /// Set the translation part, in units of the 12-fold base.
     pub fn set_translation_part(&mut self, new_translation: Vector3<i32>) {
         let mut new_column = new_translation.to_homogeneous();
         new_column.fill_row(3, 1);
         self.0.set_column(3, &new_column)
     }
-    fn rotation_jf_repr(&self) -> Vec<String> {
+
+    /// The per-axis rotation text, one entry per axis.
+    fn rotation_repr(&self) -> Vec<String> {
         let rotation_part = self
             .rotation_part()
             .column_iter()
@@ -258,11 +296,21 @@ impl SeitzMatrix {
             .collect::<Vec<String>>();
         rotation_xyz
     }
-    pub fn jones_faithful_repr_rot(&self) -> String {
-        self.rotation_jf_repr().join(",")
+    /// The rotation part only, as a formula string like `"-x,y,z"`.
+    ///
+    /// This is the compact key that orders the general positions. It
+    /// carries no translation part.
+    pub fn formula_rot(&self) -> String {
+        self.rotation_repr().join(",")
     }
-    pub fn jones_faithful_repr(&self) -> String {
-        let rotation_xyz = self.rotation_jf_repr();
+
+    /// The full operation as a formula string like `"x,y,z"` or
+    /// `"-x+y, 1/2, z"`.
+    ///
+    /// The rotation part is the axis text and the translation part uses
+    /// fractions of the 12-fold base.
+    pub fn formula(&self) -> String {
+        let rotation_xyz = self.rotation_repr();
         let tr_part = self
             .translation_part()
             .map(|v| {
@@ -274,18 +322,11 @@ impl SeitzMatrix {
                     }
                 } else {
                     let new_v = v % SEITZ_TRANSLATE_BASE_NUMBER;
-                    // if new_v < 0 {
-                    //     GenericFraction::<i32>::new(
-                    //         v + SEITZ_TRANSLATE_BASE_NUMBER,
-                    //         SEITZ_TRANSLATE_BASE_NUMBER,
-                    //     )
-                    // } else {
                     if new_v >= 0 {
                         GenericFraction::<i32>::new(new_v, SEITZ_TRANSLATE_BASE_NUMBER)
                     } else {
                         GenericFraction::<i32>::new_neg(new_v.abs(), SEITZ_TRANSLATE_BASE_NUMBER)
                     }
-                    // }
                 }
             })
             .iter()
@@ -295,38 +336,43 @@ impl SeitzMatrix {
                 Ordering::Greater => format!("+{v}"),
             })
             .collect::<Vec<String>>();
-        let faithful_repr = rotation_xyz
+        rotation_xyz
             .iter()
             .zip(tr_part.iter())
             .map(|(r, t)| format!("{r}{t}"))
             .collect::<Vec<String>>()
-            .join(",");
-        faithful_repr
+            .join(",")
     }
 }
 
+/// Translation addition.
+///
+/// Adds the translation part of the right operand to the left operand
+/// and keeps the left rotation part. The translation part of the result
+/// holds positive residues modulo 12. This is not a group operation.
+/// Use `Mul` to compose symmetry operations.
 impl Add for SeitzMatrix {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+    fn add(mut self, rhs: Self) -> Self::Output {
+        let tr = self.translation_part() + rhs.translation_part();
+        self.set_translation_part(tr.map(positive_mod_stbn_i32));
+        self
     }
 }
 
+/// Translation addition.
+///
+/// Adds a translation vector to the translation part of the matrix
+/// and keeps the rotation part. The translation part of the result
+/// holds positive residues modulo 12.
 impl Add<Vector3<i32>> for SeitzMatrix {
     type Output = Self;
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn add(self, rhs: Vector3<i32>) -> Self::Output {
-        let mut mat = self.0;
-        let mut column = mat.column(3) + rhs.to_homogeneous();
-        column.iter_mut().enumerate().for_each(|(i, v)| {
-            if i < 3 {
-                let new_v = *v % SEITZ_TRANSLATE_BASE_NUMBER;
-                *v = new_v;
-            }
-        });
-        mat.set_column(3, &column);
-        Self(mat)
+    fn add(mut self, rhs: Vector3<i32>) -> Self::Output {
+        let tr = self.translation_part() + rhs;
+        self.set_translation_part(tr.map(positive_mod_stbn_i32));
+        self
     }
 }
 
@@ -352,13 +398,22 @@ impl Mul for SeitzMatrix {
     }
 }
 
+/// Prints the Jones faithful representation, the rotation eigenvector,
+/// and the fraction Seitz matrix.
+///
+/// `Display` never panics. When `eigenvector()` is `None`,
+/// the eigenvector field prints `None`.
 impl Display for SeitzMatrix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let eigen = self
+            .eigenvector()
+            .map(|v| format!("{v:?}"))
+            .unwrap_or_else(|| "None".to_string());
         write!(
             f,
-            "{} | {:?}\n{}",
-            self.jones_faithful_repr(),
-            self.eigenvector(),
+            "{} | {}\n{}",
+            self.formula(),
+            eigen,
             self.to_fraction()
         )
     }

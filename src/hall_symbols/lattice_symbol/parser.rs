@@ -1,37 +1,35 @@
-use winnow::{
-    error::{ContextError, StrContext},
-    token::one_of,
-    ModalResult, Parser,
-};
+use chumsky::{Parser, extra, error::Rich, prelude::*};
 
 use super::{LatticeSymbol, Lattices};
 
-pub fn parse_lattice_symbol(input: &mut &str) -> ModalResult<LatticeSymbol> {
-    if parse_minus_sign(input).is_ok() {
-        let symbol_char = parse_symbol_char(input)?;
-        Ok(LatticeSymbol::new(true, symbol_char))
-    } else {
-        let symbol_char = parse_symbol_char(input)?;
-        Ok(LatticeSymbol::new(false, symbol_char))
-    }
+/// Parse the lattice symbol at the start of `input`:
+/// an optional `-`, then one of `PABCIRF`.
+pub(crate) fn parse_lattice_symbol<'a>(
+    input: &'a str,
+) -> Result<LatticeSymbol, Vec<Rich<'a, char>>> {
+    lattice_symbol()
+        .parse(input)
+        .into_result()
 }
 
-fn parse_minus_sign<'s>(input: &mut &'s str) -> ModalResult<&'s str> {
-    "-".parse_next(input)
-}
-
-fn parse_symbol_char(input: &mut &str) -> ModalResult<Lattices> {
-    let symbol_char = one_of(['P', 'A', 'B', 'C', 'I', 'R', 'F']).parse_next(input)?;
-    match symbol_char {
-        'P' => Ok(Lattices::P),
-        'A' => Ok(Lattices::A),
-        'B' => Ok(Lattices::B),
-        'C' => Ok(Lattices::C),
-        'I' => Ok(Lattices::I),
-        'R' => Ok(Lattices::R),
-        'F' => Ok(Lattices::F),
-        _ => Err(winnow::error::ErrMode::Backtrack(
-            ContextError::<StrContext>::new(),
-        )),
-    }
+/// Chumsky builder for the lattice symbol grammar.
+pub(crate) fn lattice_symbol<'a>()
+-> impl Parser<'a, &'a str, LatticeSymbol, extra::Err<Rich<'a, char>>> {
+    just('-')
+        .or_not()
+        .then(one_of("PABCIRF"))
+        .map(|(minus_sign, symbol_char): (Option<char>, char)| {
+            let lattice = match symbol_char {
+                'P' => Lattices::P,
+                'A' => Lattices::A,
+                'B' => Lattices::B,
+                'C' => Lattices::C,
+                'I' => Lattices::I,
+                'R' => Lattices::R,
+                'F' => Lattices::F,
+                // `one_of` above restricts the input to PABCIRF.
+                _ => unreachable!(),
+            };
+            LatticeSymbol::new(minus_sign.is_some(), lattice)
+        })
 }

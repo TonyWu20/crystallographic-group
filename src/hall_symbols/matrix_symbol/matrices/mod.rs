@@ -9,11 +9,21 @@ mod rotation_matrices;
 /// Implementation detail for `SeitzMatrix`
 mod seitz_mat_impl;
 
+/// A symmetry operation as a homogeneous 4x4 integer matrix.
+///
+/// The upper-left 3x3 block is the rotation or inversion part. Column
+/// 3 is the translation part, in units of the 12-fold translation
+/// base. Equality and hashing treat the translation part modulo 12.
+/// Compose operations with [`Mul`](std::ops::Mul). Use
+/// [`SeitzMatrix::formula`](SeitzMatrix::formula) for the compact text
+/// form.
 #[derive(Debug, Clone, Copy, Eq, PartialOrd)]
 pub struct SeitzMatrix(Matrix4<i32>);
 
+/// The error of classifying a Seitz matrix.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd)]
 pub enum SeitzMatrixError {
+    /// The rotation part is not a valid integer rotation matrix.
     NotRotationMatrix(Matrix4<i32>),
 }
 
@@ -26,6 +36,11 @@ impl Display for SeitzMatrixError {
 }
 
 impl MatrixSymbol {
+    /// Resolve the symbol to its Seitz matrix.
+    ///
+    /// `Err` when the symbol fields are an invalid combination. A
+    /// symbol built through the typestate builder or the parse path
+    /// always resolves.
     pub fn seitz_matrix(&self) -> Result<SeitzMatrix, MatrixSymbolError> {
         let rot_mat = self.get_rotation_matrix()?;
         if self.minus_sign {
@@ -51,11 +66,34 @@ trait RotationMatrix {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
+    use std::collections::{hash_map::DefaultHasher, HashSet};
+    use std::hash::{Hash, Hasher};
 
     use nalgebra::{Matrix3, Matrix4, Vector3};
 
     use super::SeitzMatrix;
+
+    #[test]
+    fn test_hash_invariant() {
+        // The translation parts 2 and -10 are equal modulo 12.
+        let m1 = SeitzMatrix::new(Matrix4::new(
+            0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1, 2, 0, 0, 0, 1,
+        ));
+        let m2 = SeitzMatrix::new(Matrix4::new(
+            0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1, -10, 0, 0, 0, 1,
+        ));
+        assert_eq!(m1, m2);
+
+        let mut h1 = DefaultHasher::new();
+        m1.hash(&mut h1);
+        let mut h2 = DefaultHasher::new();
+        m2.hash(&mut h2);
+        assert_eq!(h1.finish(), h2.finish());
+
+        let set: HashSet<SeitzMatrix> = [m1, m2].into_iter().collect();
+        assert_eq!(set.len(), 1);
+        assert!(set.contains(&m1));
+    }
 
     #[test]
     fn test_sm_eq() {

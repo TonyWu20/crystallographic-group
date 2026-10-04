@@ -1,64 +1,166 @@
-pub trait LookUpSpaceGroup {
-    fn get_hm_full_notation(&self, i: usize) -> Option<&str>;
-    fn get_hall_symbol(&self, i: usize) -> Option<&str>;
-    fn get_space_group_number(&self, i: usize) -> Option<&str>;
-    fn get_space_group_number_by_hm(&self, hm_full: &str) -> Option<&str>;
-    fn get_space_group_number_by_hall(&self, hall_symbol: &str) -> Option<&str>;
+use super::CrystalSystem;
+
+/// A typed, range-checked row index into the space group reference tables.
+///
+/// The inner `u16` is a zero-based row position. Construction is
+/// range-checked against the 530-row all-settings table, so a value
+/// always names an existing row of [`SpaceGroupTable::all`]. Rows
+/// 0..229 also exist in [`SpaceGroupTable::per_number`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SpaceGroupNumber(u16);
+
+impl SpaceGroupNumber {
+    /// Row count of the all-settings table: all 530 space group settings.
+    pub const ALL_TABLE_ROWS: u16 = 530;
+    /// Row count of the per-number table: one setting per space group number.
+    pub const PER_NUMBER_TABLE_ROWS: u16 = 230;
+
+    /// Build an index from a zero-based row position.
+    ///
+    /// Returns `None` when `row` is not a row of the 530-row
+    /// all-settings table.
+    pub const fn new(row: u16) -> Option<Self> {
+        if row < Self::ALL_TABLE_ROWS {
+            Some(Self(row))
+        } else {
+            None
+        }
+    }
+
+    /// The zero-based row position.
+    pub const fn row(self) -> u16 {
+        self.0
+    }
 }
 
-impl LookUpSpaceGroup for [[&str; 530]; 3] {
-    fn get_hm_full_notation(&self, i: usize) -> Option<&str> {
-        self.get(1).and_then(|&v| v.get(i).copied())
+/// A reference table of space group symbols.
+///
+/// The table holds three columns aligned by row:
+///
+/// - column 0: the space group number with its choice marker, e.g. `"3:b"`.
+/// - column 1: the full Hermann-Mauguin symbol, e.g. `"P 3 1 2"`.
+/// - column 2: the Hall symbol, e.g. `"P 31 2\""`.
+///
+/// Two static tables are available:
+///
+/// - [`SpaceGroupTable::all`]: all 530 space group settings, one row per
+///   setting, including every choice of the 230 space group numbers.
+/// - [`SpaceGroupTable::per_number`]: one setting per space group number,
+///   230 rows. Row `i` is number `i + 1`, using that number's default
+///   choice.
+///
+/// Every row accessor is bounds-checked: it returns `None` for a row past
+/// the end of the table. Nothing in this path allocates or panics.
+pub struct SpaceGroupTable<'a> {
+    num: &'a [&'static str],
+    hm: &'a [&'static str],
+    hall: &'a [&'static str],
+}
+
+impl SpaceGroupTable<'static> {
+    /// All 530 space group settings, one row per setting.
+    pub fn all() -> Self {
+        Self {
+            num: &ALL_SPACE_GROUP_SYMBOLS[0],
+            hm: &ALL_SPACE_GROUP_SYMBOLS[1],
+            hall: &ALL_SPACE_GROUP_SYMBOLS[2],
+        }
     }
 
-    fn get_hall_symbol(&self, i: usize) -> Option<&str> {
-        self.get(2).and_then(|&v| v.get(i).copied())
-    }
-
-    fn get_space_group_number_by_hm(&self, hm_full: &str) -> Option<&str> {
-        let i = self.get(1).unwrap().iter().position(|&hm| hm == hm_full)?;
-        self.first().unwrap().get(i).copied()
-    }
-
-    fn get_space_group_number_by_hall(&self, hall_symbol: &str) -> Option<&str> {
-        let i = self
-            .get(2)
-            .unwrap()
-            .iter()
-            .position(|&hall| hall == hall_symbol)?;
-        self.first().unwrap().get(i).copied()
-    }
-
-    fn get_space_group_number(&self, i: usize) -> Option<&str> {
-        self.first().and_then(|&v| v.get(i).copied())
+    /// One setting per space group number, 230 rows.
+    ///
+    /// Row `i` is space group number `i + 1` with that number's default
+    /// choice.
+    pub fn per_number() -> Self {
+        Self {
+            num: &PER_NUMBER_SPACE_GROUP_SYMBOLS[0],
+            hm: &PER_NUMBER_SPACE_GROUP_SYMBOLS[1],
+            hall: &PER_NUMBER_SPACE_GROUP_SYMBOLS[2],
+        }
     }
 }
 
-impl LookUpSpaceGroup for [[&str; 230]; 3] {
-    fn get_hm_full_notation(&self, i: usize) -> Option<&str> {
-        self.get(1).and_then(|&v| v.get(i).copied())
+impl SpaceGroupTable<'_> {
+    /// The number of rows in the table.
+    pub fn len(&self) -> usize {
+        self.num.len()
     }
 
-    fn get_hall_symbol(&self, i: usize) -> Option<&str> {
-        self.get(2).and_then(|&v| v.get(i).copied())
+    /// Whether the table has no rows.
+    pub fn is_empty(&self) -> bool {
+        self.num.is_empty()
     }
 
-    fn get_space_group_number_by_hm(&self, hm_full: &str) -> Option<&str> {
-        let i = self.get(1).unwrap().iter().position(|&hm| hm == hm_full)?;
-        self.first().unwrap().get(i).copied()
+    /// The space group number with choice marker at row `row`, e.g. `"3:b"`.
+    ///
+    /// `None` when `row` is not a row of this table.
+    pub fn number(&self, row: u16) -> Option<&'static str> {
+        self.num.get(row as usize).copied()
     }
 
-    fn get_space_group_number_by_hall(&self, hall_symbol: &str) -> Option<&str> {
-        let i = self
-            .get(2)
-            .unwrap()
-            .iter()
-            .position(|&hall| hall == hall_symbol)?;
-        self.first().unwrap().get(i).copied()
+    /// The full Hermann-Mauguin symbol at row `row`, e.g. `"P 3 1 2"`.
+    ///
+    /// `None` when `row` is not a row of this table.
+    pub fn hm_full_notation(&self, row: u16) -> Option<&'static str> {
+        self.hm.get(row as usize).copied()
     }
 
-    fn get_space_group_number(&self, i: usize) -> Option<&str> {
-        self.first().and_then(|&v| v.get(i).copied())
+    /// The Hall symbol at row `row`, e.g. `"P 31 2\""`.
+    ///
+    /// `None` when `row` is not a row of this table.
+    pub fn hall_symbol(&self, row: u16) -> Option<&'static str> {
+        self.hall.get(row as usize).copied()
+    }
+
+    /// The Hall symbols of the table, in row order.
+    pub fn hall_symbols(&self) -> &[&'static str] {
+        self.hall
+    }
+
+    /// The space group number in 1..=230 of a row.
+    ///
+    /// The row's number code carries an optional choice marker after a
+    /// `:`, e.g. `"3:b"`. The number is the code without the marker.
+    pub fn space_group_number(&self, row: u16) -> Option<u16> {
+        let code = self.number(row)?;
+        let digits = code.split(':').next()?;
+        digits.parse::<u16>().ok()
+    }
+
+    /// The rows of this table whose space group number belongs to
+    /// `system`, in row order.
+    pub fn rows_of(&self, system: CrystalSystem) -> Vec<SpaceGroupNumber> {
+        (0..self.len() as u16)
+            .filter_map(|row| {
+                let number = self.space_group_number(row)?;
+                match CrystalSystem::of_number(number) {
+                    Some(found) if found == system => SpaceGroupNumber::new(row),
+                    _ => None,
+                }
+            })
+            .collect()
+    }
+
+    /// The space group number of the first row whose full
+    /// Hermann-Mauguin symbol equals `hm_full_notation`.
+    ///
+    /// A symbol can occur on several rows of the all-settings table, one
+    /// per setting of the same symbol. The earliest row in table order
+    /// wins. `None` when no row matches.
+    pub fn number_by_hm(&self, hm_full_notation: &str) -> Option<&'static str> {
+        let row = self.hm.iter().position(|&s| s == hm_full_notation)?;
+        self.num.get(row).copied()
+    }
+
+    /// The space group number of the first row whose Hall symbol equals
+    /// `hall_symbol`.
+    ///
+    /// A symbol can occur on several rows of the all-settings table, one
+    /// per setting of the same symbol. The earliest row in table order
+    /// wins. `None` when no row matches.
+    pub fn number_by_hall(&self, hall_symbol: &str) -> Option<&'static str> {
+        let row = self.hall.iter().position(|&s| s == hall_symbol)?;
+        self.num.get(row).copied()
     }
 }
 
@@ -115,7 +217,7 @@ const NUMBER_AND_CHOICE: [&str; 530] = [
     "228:2", "229", "230",
 ];
 
-const HM_FULL: [&str; 530] = [
+const HM_FULL_NOTATION: [&str; 530] = [
     "P 1",
     "P -1",
     "P 1 2 1",
@@ -648,7 +750,7 @@ const HM_FULL: [&str; 530] = [
     "I a -3 d",
 ];
 
-const HALL_NAME: [&str; 530] = [
+const HALL_SYMBOL: [&str; 530] = [
     "P 1",
     "-P 1",
     "P 2y",
@@ -1181,7 +1283,7 @@ const HALL_NAME: [&str; 530] = [
     "-I 4bd 2c 3",
 ];
 
-const DEFAULT_NUMBER_AND_CHOICE: [&str; 230] = [
+const PER_NUMBER_NUMBER_AND_CHOICE: [&str; 230] = [
     "1", "2", "3:b", "4:b", "5:b1", "6:b", "7:b1", "8:b1", "9:b1", "10:b", "11:b", "12:b1",
     "13:b1", "14:b1", "15:b1", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26",
     "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42",
@@ -1202,7 +1304,7 @@ const DEFAULT_NUMBER_AND_CHOICE: [&str; 230] = [
     "229", "230",
 ];
 
-const DEFAULT_HM_FULL: [&str; 230] = [
+const PER_NUMBER_HM_FULL_NOTATION: [&str; 230] = [
     "P 1       ",
     "P -1      ",
     "P 1 2 1   ",
@@ -1435,7 +1537,7 @@ const DEFAULT_HM_FULL: [&str; 230] = [
     "I a -3 d  ",
 ];
 
-const DEFAULT_HALL_NAME: [&str; 230] = [
+const PER_NUMBER_HALL_SYMBOL: [&str; 230] = [
     "P 1",
     "-P 1",
     "P 2y",
@@ -1668,10 +1770,31 @@ const DEFAULT_HALL_NAME: [&str; 230] = [
     "-I 4bd 2c 3",
 ];
 
-pub const FULL_SPACE_GROUP_SYMBOLS: [[&str; 530]; 3] = [NUMBER_AND_CHOICE, HM_FULL, HALL_NAME];
+/// All 530 space group settings, one row per setting.
+///
+/// Row `i` holds the `(number, full Hermann-Mauguin symbol, Hall symbol)`
+/// triple of the `i`-th setting, in International Tables order. Each of
+/// the 230 space group numbers appears once per choice it has, an origin
+/// choice or an enantiomorphic pair: 140 numbers have a single setting,
+/// and the rest have up to 18.
+///
+/// Column 0: space group number with choice marker, e.g. `"3:b"`.
+/// Column 1: full Hermann-Mauguin symbol, e.g. `"P 3 1 2"`.
+/// Column 2: Hall symbol, e.g. `"P 31 2\""`.
+pub static ALL_SPACE_GROUP_SYMBOLS: [[&str; 530]; 3] =
+    [NUMBER_AND_CHOICE, HM_FULL_NOTATION, HALL_SYMBOL];
 
-pub const DEFAULT_SPACE_GROUP_SYMBOLS: [[&str; 230]; 3] = [
-    DEFAULT_NUMBER_AND_CHOICE,
-    DEFAULT_HM_FULL,
-    DEFAULT_HALL_NAME,
+/// One space group setting per space group number, 230 rows.
+///
+/// Row `i` is the default setting of space group number `i + 1`. The
+/// other settings of a number exist only in
+/// [`ALL_SPACE_GROUP_SYMBOLS`]. This table is not a row subset of that
+/// table: 15 rows spell the Hall symbol differently, for example number
+/// 76 is `"P 41"` here but `"P 4w"` in the all-settings table.
+///
+/// Columns match [`ALL_SPACE_GROUP_SYMBOLS`].
+pub static PER_NUMBER_SPACE_GROUP_SYMBOLS: [[&str; 230]; 3] = [
+    PER_NUMBER_NUMBER_AND_CHOICE,
+    PER_NUMBER_HM_FULL_NOTATION,
+    PER_NUMBER_HALL_SYMBOL,
 ];
