@@ -12,11 +12,23 @@ mod parser;
 
 pub(crate) use parser::lattice_symbol;
 
+/// A marker for one lattice type.
+///
+/// Each marker names the lattice translation vectors. The lattice
+/// types are the unit structs [`P`], [`A`], [`B`], [`C`], [`I`],
+/// [`R`], and [`F`].
 pub trait LatticeSymbolChar {
+    /// The type of the translation vectors for this lattice.
     type Output;
+
+    /// The lattice translation vectors, in units of the 12-fold base.
     fn translations() -> Self::Output;
 }
 
+/// The lattice part of a Hall symbol: the sign and the lattice letter.
+///
+/// The sign marks the centrosymmetric settings. The letter selects the
+/// lattice type and its translation vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LatticeSymbol {
     minus_sign: bool,
@@ -31,15 +43,22 @@ impl Display for LatticeSymbol {
 }
 
 impl LatticeSymbol {
+    /// Build a lattice symbol from the sign and the lattice type.
     pub fn new(minus_sign: bool, char: Lattices) -> Self {
         Self { minus_sign, char }
     }
+
+    /// Parse a lattice symbol string, e.g. `"-F"`.
     pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_lattice_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
+
+    /// The lattice translation vectors, in units of the 12-fold base.
     pub fn get_translations(&self) -> Vec<Vector3<i32>> {
         self.char.get_translations()
     }
+
+    /// The number of lattice translations of this lattice type.
     pub fn num_of_translations(&self) -> usize {
         match self.char {
             Lattices::P => 1,
@@ -51,9 +70,15 @@ impl LatticeSymbol {
             Lattices::F => 4,
         }
     }
+
+    /// Whether the symbol carries the leading minus sign.
     pub fn minus_sign(&self) -> bool {
         self.minus_sign
     }
+
+    /// The Seitz matrices of the lattice, one per translation vector.
+    ///
+    /// A centrosymmetric lattice doubles the set with the inversion.
     pub fn seitz_matrices(&self) -> Vec<SeitzMatrix> {
         if self.minus_sign {
             // vec![SeitzMatrix::identity(), SeitzMatrix::inversion()]
@@ -71,6 +96,7 @@ impl LatticeSymbol {
         }
     }
 
+    /// The lattice type of this symbol.
     pub fn char(&self) -> Lattices {
         self.char
     }
@@ -85,14 +111,22 @@ impl SymmetryElement for LatticeSymbol {
     }
 }
 
+/// The Bravais lattice type of a crystal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Lattices {
+    /// Primitive lattice.
     P,
+    /// Base-centered on the `a` axis.
     A,
+    /// Base-centered on the `b` axis.
     B,
+    /// Base-centered on the `c` axis.
     C,
+    /// Body-centered lattice.
     I,
+    /// Rhombohedral lattice.
     R,
+    /// Face-centered lattice.
     F,
 }
 
@@ -110,24 +144,31 @@ impl Lattices {
     }
 }
 
+/// The primitive lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct P;
 
+/// The `a`-base-centered lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct A;
 
+/// The `b`-base-centered lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct B;
 
+/// The `c`-base-centered lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct C;
 
+/// The body-centered lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct I;
 
+/// The rhombohedral lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct R;
 
+/// The face-centered lattice marker.
 #[derive(Debug, Clone, Copy)]
 pub struct F;
 

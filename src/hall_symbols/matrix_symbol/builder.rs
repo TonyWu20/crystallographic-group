@@ -30,6 +30,12 @@ use super::{
 impl MatrixSymbol {
     // The generated start function `new()` returns the builder, not
     // `Self`. This is the expected shape of a bon builder entry point.
+    /// The cross-field-validating constructor, fallible.
+    ///
+    /// The generated `new()` entry returns the `NewBuilder`. Its
+    /// `build()` returns `Result<MatrixSymbol, MatrixSymbolError>` and
+    /// runs the rules that `get_rotation_matrix` and `set_transform`
+    /// already encode. This function does not duplicate that table.
     #[allow(clippy::new_ret_no_self)]
     #[builder(start_fn = new, builder_type = NewBuilder, finish_fn = build)]
     pub fn from_parts(

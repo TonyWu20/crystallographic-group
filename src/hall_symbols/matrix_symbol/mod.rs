@@ -16,6 +16,15 @@ pub use notations::*;
 
 pub(crate) use parser::matrix_symbol;
 
+/// One generator symbol of a Hall notation, e.g. `2`, `61`, or `-2c`.
+///
+/// The fields split the symbol into its parts: the sign, the fold, the
+/// sub-number, the diagnostic, the rotation axis, and the translation
+/// symbols. Build it with the typestate builder
+/// [`MatrixSymbol::new_builder`] or parse it with
+/// [`MatrixSymbol::try_from_str`]. Resolve it to a
+/// [`SeitzMatrix`](super::SeitzMatrix) with
+/// [`MatrixSymbol::seitz_matrix`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Builder)]
 pub struct MatrixSymbol {
     // `-` or not
@@ -56,6 +65,7 @@ impl Display for MatrixSymbol {
 }
 
 impl MatrixSymbol {
+    /// Parse one matrix symbol string, e.g. `"61"` or `"-2c"`.
     pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_hall_matrix_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
@@ -66,53 +76,66 @@ impl MatrixSymbol {
         Self::builder()
     }
 
+    /// Whether the symbol carries the leading minus sign.
     pub fn minus_sign(&self) -> bool {
         self.minus_sign
     }
 
+    /// The fold body, the rotation or inversion fold of the symbol.
     pub fn nfold_body(&self) -> NFold {
         self.nfold_body
     }
 
+    /// The sub-number, if the fold carries one.
     pub fn nfold_sub(&self) -> NFoldSub {
         self.nfold_sub
     }
 
+    /// The diagnostic character, if the fold carries one.
     pub fn nfold_diag(&self) -> NFoldDiag {
         self.nfold_diag
     }
 
+    /// The rotation axis, or `RotationAxis::Omitted` when implied.
     pub fn rotation_axis(&self) -> RotationAxis {
         self.rotation_axis
     }
 
+    /// The translation symbols, or `None` when the symbol has none.
     pub fn translation_symbols(&self) -> Option<&Vec<TranslationSymbol>> {
         self.translation_symbols.as_ref()
     }
 
+    /// Set the leading minus sign.
     pub fn set_minus_sign(&mut self, minus_sign: bool) {
         self.minus_sign = minus_sign;
     }
 
+    /// Set the fold body.
     pub fn set_nfold_body(&mut self, nfold_body: NFold) {
         self.nfold_body = nfold_body;
     }
 
+    /// Set the sub-number.
     pub fn set_nfold_sub(&mut self, nfold_sub: NFoldSub) {
         self.nfold_sub = nfold_sub;
     }
 
+    /// Set the diagnostic character.
     pub fn set_nfold_diag(&mut self, nfold_diag: NFoldDiag) {
         self.nfold_diag = nfold_diag;
     }
 
+    /// Set the rotation axis.
     pub fn set_rotation_axis(&mut self, rotation_axis: RotationAxis) {
         self.rotation_axis = rotation_axis;
     }
 }
 
+/// The error of resolving a matrix symbol to a Seitz matrix.
 #[derive(Debug, Clone)]
 pub enum MatrixSymbolError {
+    /// The symbol is not a valid combination of fields.
     Invalid(MatrixSymbol),
 }
 

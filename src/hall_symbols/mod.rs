@@ -1,3 +1,15 @@
+//! The Hall symbol notation and its parts.
+//!
+//! A Hall symbol names one space group setting. This module parses the
+//! notation and resolves its parts: the lattice symbol, the generator
+//! matrix symbols, and the origin shift. It also computes the general
+//! positions of a notation.
+//!
+//! The central parse type is [`HallSymbolNotation`]. The typed parts
+//! are [`LatticeSymbol`], [`MatrixSymbol`], and [`OriginShift`]. The
+//! translation part of every matrix holds integer residues in the
+//! 12-fold base `SEITZ_TRANSLATE_BASE_NUMBER`.
+
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
@@ -28,12 +40,27 @@ pub use origin_shift::OriginShift;
 pub use parser::restore_information_in_matrix_symbols;
 pub use translation_symbol::TranslationSymbol;
 
+/// The translation base for the Seitz matrix representation.
+///
+/// Translation parts store integer residues in this base. The value
+/// `12` matches the maximum order of a rotation in a space group.
+/// Equality and hashing normalize the translation part modulo this
+/// number.
 pub(crate) const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
 
+/// An element of a crystallographic symmetry group.
 pub trait SymmetryElement {
+    /// The order of the symmetry element, that is the number of
+    /// distinct operations it generates.
     fn equiv_num(&self) -> usize;
 }
 
+/// One Hall symbol notation: the lattice symbol, the generator matrix
+/// symbols, and the origin shift.
+///
+/// Build it from a string with [`HallSymbolNotation::try_from_str`] or
+/// from typed parts with [`HallSymbolNotation::new`]. Both paths
+/// resolve the general positions through [`HallSymbolNotation::general_positions`].
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct HallSymbolNotation {
     lattice_symbol: LatticeSymbol,
@@ -42,6 +69,11 @@ pub struct HallSymbolNotation {
 }
 
 impl HallSymbolNotation {
+    /// Build a notation from typed parts.
+    ///
+    /// The parts stay as given. The parse path also applies the
+    /// implied-axis rules, so a hand-built set may need
+    /// [`restore_information_in_matrix_symbols`] first.
     pub fn new(
         lattice_symbol: LatticeSymbol,
         matrix_symbols: Vec<MatrixSymbol>,
@@ -53,6 +85,10 @@ impl HallSymbolNotation {
             origin_shift,
         }
     }
+
+    /// Parse a Hall symbol string into a notation.
+    ///
+    /// A malformed input is [`HallParseError`].
     pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_hall_symbol(input)
     }
@@ -72,10 +108,7 @@ impl HallSymbolNotation {
         self.origin_shift
     }
 
-    fn num_generators(&self) -> usize {
-        self.lattice_symbol.equiv_num() + self.matrix_symbols.len()
-    }
-
+    /// The maximum number of positions, from the generator orders.
     fn max_equiv_pos(&self) -> usize {
         self.matrix_symbols
             .iter()
@@ -83,7 +116,9 @@ impl HallSymbolNotation {
             .fold(self.lattice_symbol.equiv_num(), |acc, x| acc * x)
     }
 
-    fn get_matrice_order(&self) -> Vec<&str> {
+    /// The formula-order table for the crystal system of the first
+    /// generator. It keys the sort of the general positions.
+    fn get_formula_order(&self) -> Vec<&str> {
         let first_m = self.matrix_symbols.first().unwrap();
         match first_m.nfold_body() {
             NFold::N6 => ORDER_24.to_vec(),
@@ -97,16 +132,16 @@ impl HallSymbolNotation {
 
     fn sort_general_positions(&self, positions: &[SeitzMatrix]) -> Vec<SeitzMatrix> {
         let mut ret_position: Vec<SeitzMatrix> = positions.to_vec();
-        let order_to_use = self.get_matrice_order();
+        let order_to_use = self.get_formula_order();
         ret_position.sort_by(|a, b| {
             let a_id = order_to_use
                 .iter()
-                .position(|&s| s == a.jones_faithful_repr_rot())
-                .unwrap_or_else(|| panic!("{} fails to match", a.jones_faithful_repr_rot()));
+                .position(|&s| s == a.formula_rot())
+                .unwrap_or_else(|| panic!("{} fails to match", a.formula_rot()));
             let b_id = order_to_use
                 .iter()
-                .position(|&s| s == b.jones_faithful_repr_rot())
-                .unwrap_or_else(|| panic!("{} fails to match", b.jones_faithful_repr_rot()));
+                .position(|&s| s == b.formula_rot())
+                .unwrap_or_else(|| panic!("{} fails to match", b.formula_rot()));
             a_id.cmp(&b_id)
         });
         ret_position.to_vec()
@@ -179,26 +214,31 @@ impl HallSymbolNotation {
         }
     }
 
+    /// Build the full position set by closing the lattice and generator
+    /// operations under composition.
+    ///
+    /// Each new operation is added only when it is unique. The loop
+    /// stops when no new operation appears. The result is sorted by
+    /// [`Self::get_formula_order`].
     fn generate_positions(&self) -> Vec<SeitzMatrix> {
-        // let num_generators = self.num_generators();
         let mut list: Vec<SeitzMatrix> = Vec::with_capacity(self.max_equiv_pos());
-        let mut matrice_map: HashMap<Matrix3<i32>, HashSet<Vector3<i32>>> = HashMap::new();
+        let mut rotation_map: HashMap<Matrix3<i32>, HashSet<Vector3<i32>>> = HashMap::new();
         self.lattice_symbol.seitz_matrices().iter().for_each(|&m| {
-            self.add_to_list(&mut list, &mut matrice_map, m);
+            self.add_to_list(&mut list, &mut rotation_map, m);
         });
         self.matrix_symbols.iter().for_each(|ms| {
             let seitz_mx = ms
                 .seitz_matrix()
                 .unwrap_or_else(|_| panic!("SeitzMatrix generation failed for {}", ms));
             let shifted = self.origin_shift.shifted_matrix(seitz_mx);
-            self.add_to_list(&mut list, &mut matrice_map, shifted);
+            self.add_to_list(&mut list, &mut rotation_map, shifted);
         });
         loop {
             let mut list_cloned = list.clone();
             for i in list.iter().skip(1) {
                 for j in list.iter().skip(1) {
                     let new_m = *i * *j;
-                    if self.add_to_list(&mut list_cloned, &mut matrice_map, new_m) {
+                    if self.add_to_list(&mut list_cloned, &mut rotation_map, new_m) {
                         break;
                     }
                 }
@@ -211,6 +251,8 @@ impl HallSymbolNotation {
         }
         self.sort_general_positions(&list)
     }
+
+    /// The general positions of this notation, in formula order.
     pub fn general_positions(&self) -> GeneralPositions {
         GeneralPositions::new(
             self.lattice_symbol.get_translations(),
@@ -236,7 +278,7 @@ impl TryFrom<SpaceGroupHallSymbol> for HallSymbolNotation {
 impl Display for HallSymbolNotation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let lattice_symbol = format!("{}", self.lattice_symbol);
-        let matrice = self
+        let matrix_symbols_text = self
             .matrix_symbols
             .iter()
             .map(|m| format!("{m}"))
@@ -247,7 +289,7 @@ impl Display for HallSymbolNotation {
         } else {
             String::new()
         };
-        write!(f, "{} {}{}", lattice_symbol, matrice, origin_shift)
+        write!(f, "{} {}{}", lattice_symbol, matrix_symbols_text, origin_shift)
     }
 }
 
@@ -273,7 +315,7 @@ mod test {
         let general_positions = p178.unwrap().general_positions();
         println!(
             "Number of positions: {}",
-            general_positions.num_of_general_pos()
+            general_positions.len()
         );
     }
     #[test]
@@ -283,7 +325,7 @@ mod test {
         let general_positions = p_5.general_positions();
         println!(
             "Number of positions: {}",
-            general_positions.num_of_general_pos()
+            general_positions.len()
         );
         println!("{general_positions}");
     }
@@ -346,11 +388,11 @@ mod test {
                     HallSymbolNotation::try_from_str(symbol)
                         .unwrap()
                         .general_positions()
-                        .pure_txt(),
+                        .formulas(),
                 )
             })
             .enumerate()
-            .for_each(|(i, xyz_repr)| {
+            .for_each(|(i, formula_set)| {
                 let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
                     .join("refs")
                     .join(format!("{}.txt", i + 1));
@@ -359,10 +401,10 @@ mod test {
                     .lines()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>();
-                if ref_content != xyz_repr {
+                if ref_content != formula_set {
                     println!("{}: {}", i + 1, hall_symbols[i]);
                     println!("ref:\n{:?}", ref_content);
-                    println!("this:\n{:?}", xyz_repr);
+                    println!("this:\n{:?}", formula_set);
                 }
             })
     }
@@ -370,17 +412,7 @@ mod test {
     fn test(symbol_str: &str) {
         let g = HallSymbolNotation::try_from_str(symbol_str).unwrap();
         let positions = g.general_positions();
-        println!("Number of positions: {}", positions.num_of_general_pos());
-        println!("{}", positions.text_format());
-    }
-
-    fn xyz_repr(symbol_str: &str) -> String {
-        let g = HallSymbolNotation::try_from_str(symbol_str).unwrap();
-        let positions = g.general_positions();
-        positions.text_format()
-    }
-
-    fn read_from_refs() -> Vec<Vec<String>> {
-        todo!()
+        println!("Number of positions: {}", positions.len());
+        println!("{positions}");
     }
 }

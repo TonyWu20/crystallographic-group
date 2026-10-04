@@ -1,3 +1,10 @@
+//! The space group reference database.
+//!
+//! This module holds the two static symbol tables and the typed row
+//! index. The all-settings table holds all 530 space group settings.
+//! The per-number table holds one default setting per space group
+//! number. Lookups are bounds-checked and allocation-free.
+
 mod crystal_system;
 mod space_group_table;
 mod sym_ops_order;

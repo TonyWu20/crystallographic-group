@@ -9,11 +9,21 @@ mod rotation_matrices;
 /// Implementation detail for `SeitzMatrix`
 mod seitz_mat_impl;
 
+/// A symmetry operation as a homogeneous 4x4 integer matrix.
+///
+/// The upper-left 3x3 block is the rotation or inversion part. Column
+/// 3 is the translation part, in units of the 12-fold translation
+/// base. Equality and hashing treat the translation part modulo 12.
+/// Compose operations with [`Mul`](std::ops::Mul). Use
+/// [`SeitzMatrix::formula`](SeitzMatrix::formula) for the compact text
+/// form.
 #[derive(Debug, Clone, Copy, Eq, PartialOrd)]
 pub struct SeitzMatrix(Matrix4<i32>);
 
+/// The error of classifying a Seitz matrix.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd)]
 pub enum SeitzMatrixError {
+    /// The rotation part is not a valid integer rotation matrix.
     NotRotationMatrix(Matrix4<i32>),
 }
 
@@ -26,6 +36,11 @@ impl Display for SeitzMatrixError {
 }
 
 impl MatrixSymbol {
+    /// Resolve the symbol to its Seitz matrix.
+    ///
+    /// `Err` when the symbol fields are an invalid combination. A
+    /// symbol built through the typestate builder or the parse path
+    /// always resolves.
     pub fn seitz_matrix(&self) -> Result<SeitzMatrix, MatrixSymbolError> {
         let rot_mat = self.get_rotation_matrix()?;
         if self.minus_sign {

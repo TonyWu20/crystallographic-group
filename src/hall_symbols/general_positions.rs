@@ -7,6 +7,12 @@ use crate::hall_symbols::SEITZ_TRANSLATE_BASE_NUMBER;
 
 use super::matrix_symbol::SeitzMatrix;
 
+/// The general positions of one space group setting.
+///
+/// A general position is a symmetry operation of the group. The type
+/// holds the core position set and the lattice translations. It can
+/// expand either into the full sets or into one formula string per
+/// position.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct GeneralPositions {
     lattice_translations: Vec<Vector3<i32>>,
@@ -14,6 +20,8 @@ pub struct GeneralPositions {
 }
 
 impl GeneralPositions {
+    /// Build a position set from the lattice translations and the
+    /// core position set.
     pub fn new(
         lattice_translations: Vec<Vector3<i32>>,
         core_position_set: Vec<SeitzMatrix>,
@@ -23,6 +31,8 @@ impl GeneralPositions {
             core_position_set,
         }
     }
+
+    /// Expand the core set into one full set per lattice translation.
     pub fn derive_full_sets(&self) -> Vec<Vec<SeitzMatrix>> {
         self.lattice_translations
             .iter()
@@ -30,47 +40,29 @@ impl GeneralPositions {
             .collect()
     }
 
+    /// The core position set, one entry per group element.
     pub fn core_position_set(&self) -> &[SeitzMatrix] {
         &self.core_position_set
     }
 
-    pub fn num_of_general_pos(&self) -> usize {
+    /// The number of positions in the full set.
+    pub fn len(&self) -> usize {
         self.core_position_set.len()
     }
 
-    pub fn text_format(&self) -> String {
-        self.derive_full_sets()
-            .iter()
-            .enumerate()
-            .zip(self.lattice_translations.iter())
-            .map(|((set_i, set), tr)| {
-                let trans = tr.map(|v| GenericFraction::<i32>::new(v, SEITZ_TRANSLATE_BASE_NUMBER));
-                let trans_heading = format!("[{}, {}, {}] + set", trans.x, trans.y, trans.z);
-                let positions = set
-                    .iter()
-                    .enumerate()
-                    .map(|(i, m)| {
-                        format!(
-                            "{}, {}",
-                            set_i * self.core_position_set.len() + i + 1,
-                            m.jones_faithful_repr()
-                        )
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n");
-                [trans_heading, positions].join("\n")
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
+    /// Whether the position set holds no positions.
+    pub fn is_empty(&self) -> bool {
+        self.core_position_set.is_empty()
     }
-    pub fn pure_txt(&self) -> Vec<String> {
+
+    /// One formula string per position of the full set.
+    ///
+    /// The list holds the positions in set order. It is the compact
+    /// view that the reference files compare against.
+    pub fn formulas(&self) -> Vec<String> {
         self.derive_full_sets()
             .iter()
-            .flat_map(|v| {
-                v.iter()
-                    .map(|m| m.jones_faithful_repr())
-                    .collect::<Vec<String>>()
-            })
+            .flat_map(|v| v.iter().map(|m| m.formula()).collect::<Vec<String>>())
             .collect::<Vec<String>>()
     }
 }

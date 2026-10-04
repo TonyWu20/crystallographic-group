@@ -2,20 +2,35 @@ use std::fmt::Display;
 
 use nalgebra::Vector3;
 
+/// A translation symbol of a Hall notation.
+///
+/// Each symbol adds a fixed half-lattice or quarter-lattice
+/// translation. The letters follow the Hall convention.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TranslationSymbol {
+    /// No translation, or an unrecognized letter.
     Invalid,
+    /// A half translation along the `a` axis.
     A,
+    /// A half translation along the `b` axis.
     B,
+    /// A half translation along the `c` axis.
     C,
+    /// A half translation along the body diagonal.
     N,
+    /// A quarter translation along the `a` axis.
     U,
+    /// A quarter translation along the `b` axis.
     V,
+    /// A quarter translation along the `c` axis.
     W,
+    /// A quarter translation along the body diagonal.
     D,
 }
 
 impl TranslationSymbol {
+    /// The translation vector of this symbol, in units of the 12-fold
+    /// base.
     pub fn translation_vector(&self) -> Vector3<i32> {
         match self {
             TranslationSymbol::A => Vector3::new(6, 0, 0),

@@ -12,8 +12,10 @@ mod parser;
 
 pub(crate) use parser::origin_shift;
 
-pub const CHANGE_OF_BASIS_BASE_NUMBER: i32 = 72;
-
+/// A fractional origin shift of a space group setting.
+///
+/// The three components are in units of the 12-fold translation base.
+/// A default shift is `(0, 0, 0)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OriginShift {
     va: i32,
@@ -28,10 +30,14 @@ impl Default for OriginShift {
 }
 
 impl OriginShift {
+    /// Parse an origin shift string, e.g. `"(0 0 -1)"`.
     pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_origin_shift(input).map_err(|errors| HallParseError::new(input, errors))
     }
 
+    /// Build a shift from three integer components.
+    ///
+    /// Each component is folded into the range `(-12, 12)`.
     pub fn new(va: i32, vb: i32, vc: i32) -> Self {
         // Ensure value is between (-12, 12)
         let closed = [va, vb, vc].map(|v| {
@@ -45,6 +51,10 @@ impl OriginShift {
         Self { va, vb, vc }
     }
 
+    /// Apply the origin shift to a Seitz matrix.
+    ///
+    /// This conjugates the matrix by the shift translation. The result
+    /// keeps positive translation residues.
     pub fn shifted_matrix(&self, seitz_matrix: SeitzMatrix) -> SeitzMatrix {
         let mut v = [self.va, self.vb, self.vc].map(|v| v.neg()).to_vec();
         v.push(1);

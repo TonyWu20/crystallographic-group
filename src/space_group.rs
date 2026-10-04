@@ -35,9 +35,9 @@ impl SpaceGroup {
     /// Build a group from structured parts.
     ///
     /// The implied-axis rules of
-    /// [`restore_information_in_matrix_symbols`](crate::hall_symbols::restore_information_in_matrix_symbols)
-    /// apply to `generators`, as the parse path applies them. A part set
-    /// that matches no table row gives `None` from the table methods.
+    /// [`restore_information_in_matrix_symbols`] apply to `generators`,
+    /// as the parse path applies them. A part set that matches no table
+    /// row gives `None` from the table methods.
     pub fn new(lattice: LatticeSymbol, generators: Vec<MatrixSymbol>, origin_shift: OriginShift) -> Self {
         Self::from(HallSymbolNotation::new(lattice, generators, origin_shift))
     }

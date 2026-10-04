@@ -1,14 +1,26 @@
 use std::fmt::Display;
 
+/// The crystal system of a space group.
+///
+/// The system is fixed by the range of the space group number. It is
+/// not the lattice letter. See
+/// [`CrystalSystem::of_number`] for the standard ranges.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum CrystalSystem {
+    /// Space group numbers 1 to 2.
     #[default]
     Triclinic,
+    /// Space group numbers 3 to 15.
     Monoclinic,
+    /// Space group numbers 16 to 74.
     Orthorhombic,
+    /// Space group numbers 75 to 142.
     Tetragonal,
+    /// Space group numbers 143 to 167.
     Trigonal,
+    /// Space group numbers 168 to 194.
     Hexagonal,
+    /// Space group numbers 195 to 230.
     Cubic,
 }
 
