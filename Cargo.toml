@@ -1,6 +1,6 @@
 [package]
 name = "crystallographic-group"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Tony Wu <tony.w21@gmail.com>"]
 edition = "2021"
 description = "Provide crystallographic group reference and useful information, e.g. lattice coordinates and symmetry operation matrices."
