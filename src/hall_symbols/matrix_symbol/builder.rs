@@ -48,11 +48,11 @@ impl MatrixSymbolBuilder {
         self.translation_symbols = translation_symbols;
         self
     }
-    pub fn build<'a>(&mut self) -> Result<MatrixSymbol, MatrixSymbolError<'a>> {
-        if self.nfold_body.is_some() {
+    pub fn build(&mut self) -> Result<MatrixSymbol, MatrixSymbolError> {
+        if let Some(nfold_body) = self.nfold_body {
             Ok(MatrixSymbol {
                 minus_sign: self.minus_sign.unwrap_or(false),
-                nfold_body: self.nfold_body.unwrap(),
+                nfold_body,
                 nfold_sub: self.nfold_sub.unwrap_or_default(),
                 nfold_diag: self.nfold_diag.unwrap_or_default(),
                 rotation_axis: self.rotation_axis.unwrap_or_default(),

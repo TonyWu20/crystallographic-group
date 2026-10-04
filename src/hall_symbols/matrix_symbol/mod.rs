@@ -105,12 +105,12 @@ impl MatrixSymbol {
 }
 
 #[derive(Debug, Clone)]
-pub enum MatrixSymbolError<'a> {
-    Invalid(&'a MatrixSymbol),
+pub enum MatrixSymbolError {
+    Invalid(MatrixSymbol),
     IncompleteFields,
 }
 
-impl<'a> Display for MatrixSymbolError<'a> {
+impl Display for MatrixSymbolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MatrixSymbolError::Invalid(symbol) => write!(f, "Invalid symbol {:?}", symbol),

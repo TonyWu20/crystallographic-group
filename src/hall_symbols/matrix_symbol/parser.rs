@@ -68,8 +68,7 @@ pub(crate) fn matrix_symbol<'a>()
         .then(axis.or_not())
         .then(nfold_sub.then(translation_symbols))
         .map(
-            |((((leading, minus_sign), nfold_body), axis), (nfold_sub, translation_symbols))| {
-                let _ = leading;
+            |((((_leading, minus_sign), nfold_body), axis), (nfold_sub, translation_symbols))| {
                 let mut builder = MatrixSymbol::new_builder();
                 builder
                     .set_minus_sign(minus_sign.is_some())
