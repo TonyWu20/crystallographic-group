@@ -28,7 +28,7 @@ impl Default for OriginShift {
 }
 
 impl OriginShift {
-    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_origin_shift(input).map_err(|errors| HallParseError::new(input, errors))
     }
 

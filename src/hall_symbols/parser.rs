@@ -14,7 +14,7 @@ use super::{
 
 /// Parse a full Hall symbol notation:
 /// lattice symbol, then repeated matrix symbols, then an optional origin shift.
-pub fn parse_hall_symbol(input: &str) -> Result<HallSymbolNotation, HallParseError<'_>> {
+pub fn parse_hall_symbol(input: &str) -> Result<HallSymbolNotation, HallParseError> {
     let ((lattice, mut matrix_symbols), origin_shift) = lattice_symbol()
         .then(matrix_symbol().repeated().collect::<Vec<MatrixSymbol>>())
         .then(origin_shift())

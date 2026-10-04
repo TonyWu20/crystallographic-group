@@ -54,7 +54,7 @@ impl HallSymbolNotation {
             origin_shift,
         }
     }
-    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_hall_symbol(input)
     }
 

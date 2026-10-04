@@ -56,7 +56,7 @@ impl Display for MatrixSymbol {
 }
 
 impl MatrixSymbol {
-    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_hall_matrix_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
 

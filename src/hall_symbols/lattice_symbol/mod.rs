@@ -34,7 +34,7 @@ impl LatticeSymbol {
     pub fn new(minus_sign: bool, char: Lattices) -> Self {
         Self { minus_sign, char }
     }
-    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError> {
         parse_lattice_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
     pub fn get_translations(&self) -> Vec<Vector3<i32>> {
