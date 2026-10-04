@@ -8,12 +8,12 @@ Status: draft. Decisions are recorded in the table below as they are made.
 |----|----------|--------|
 | D1 | Breaking API changes are acceptable. Target version 0.4.0. | Approved |
 | D2 | Commit `refs/*.txt` so `test_all` passes out of the box. | Done (230 files, 16/16 tests pass) |
-| D3 | Parser framework: `chumsky` 0.13 + `ariadne` 0.6 (Path B). | Decided |
+| D3 | Parser framework: `chumsky` 0.13 + `ariadne` 0.6 (Path B). | Done (commit `c3d1de3`, session `chumsky-migration`) |
 | D4 | Replace the hand-written `MatrixSymbolBuilder` with the `bon` crate. | Done (session `bon-builder`, design in the D4 section) |
 | D5 | Monitoring of delegated long tasks: event-driven, no poll loop. Standard form: `nohup bash -c 'rushi run task "task" && rushi run main "done" || rushi run main "failed"'`. The back message uses the start form, no `--no-run`: the main session is stopped when the task ends, and only the start form wakes it. `--no-run` appends to a live loop only. | Decided, corrected |
-| D6 | Execution plan: run the findings pass and D4 as two headless sessions, chained in that order. Both share files, so they must not run in parallel. | Decided |
-| D7 | Finding 4: delete the `From<&str>` and `From<&char>` impls for `NFoldSub`. They map unknown input to `None` silently. The parser maps digits directly. | Decided |
-| D8 | Finding 7: promote `restore_information_in_matrix_symbols` to a public, documented function. Re-export it at the `hall_symbols` root. | Decided |
+| D6 | Execution plan: run the findings pass and D4 as two headless sessions, chained in that order. Both share files, so they must not run in parallel. | Done (sessions `findings-pass`, `bon-builder`) |
+| D7 | Finding 4: delete the `From<&str>` and `From<&char>` impls for `NFoldSub`. They map unknown input to `None` silently. The parser maps digits directly. | Done (commit `0109eac`) |
+| D8 | Finding 7: promote `restore_information_in_matrix_symbols` to a public, documented function. Re-export it at the `hall_symbols` root. | Done (commit `1948e12`) |
 
 ## Baseline (verified 2026-10-04)
 
@@ -252,6 +252,45 @@ Two new nits from the migration:
      `docs/task-docs-and-example.md`.
 - The order puts table coupling before `SpaceGroup`. The new center type
   exposes the typed reference values that the table work produces.
+
+## Queue outcome (five sessions, 2026-10-04)
+
+All five sessions finished. Every gate passed. Verified in the main
+session: `cargo clippy --lib` and `cargo clippy --all-targets` at zero
+warnings, 23 of 23 tests including `test_all`, the example builds and
+runs.
+
+- `parser-hardening` (commits `4be36cf`, `0109eac`, `1948e12`):
+  `HallParseError` is a lifetime-free struct that renders to a `String`.
+  The `NFoldSub` `From` impls are gone (D7). The restore rules are
+  public and re-exported (D8).
+- `table-coupling` (commit `7fad2bc`): the 530-variant enum is dropped
+  for the typed `SpaceGroupNumber(u16)` index. The `LookUpSpaceGroup`
+  trait is replaced by concrete `SpaceGroupTable` methods. Lookups
+  return `&'static str`. The tables are renamed `ALL_` and `PER_NUMBER_`.
+- `space-group` (commit `7037253`): `SpaceGroup` is the public center,
+  re-exported at the crate root with `SpaceGroupError`. `number`,
+  `hm_symbol`, and `crystal_system` return `Option`. The
+  `HallSymbolNotation` conversion is a fallible `TryFrom` built from
+  structured fields. Six new tests cover the crystal-system ranges and
+  the entry paths.
+- `seitz-invariants` (commit `c41955f`): `Hash` normalizes the
+  translation parts to positive residues. `eigenvector()` returns
+  `Option`. `Display` has a safe fallback. `Add` adds translation
+  parts only. The new `test_hash_invariant` passes.
+- `docs-and-example` (commit `8799ea0`): every public item is
+  documented. The crate doc states the 12-fold base. The finding-18
+  renames are applied. `utils` is private. The crate root has no
+  `allow(dead_code)`. `examples/entry_paths.rs` shows both entry paths.
+
+Crystal-system ranges as shipped: 1-2 triclinic, 3-15 monoclinic,
+16-74 orthorhombic, 75-142 tetragonal, 143-167 trigonal, 168-194
+hexagonal, 195-230 cubic. The session verified them against the table.
+The main session cross-checked them against `refs/`: number 152
+(quartz) is trigonal, 167 is the last trigonal number, and 205 is
+cubic.
+
+All findings 1 to 20 are closed.
 
 ## Findings pass outcome
 
