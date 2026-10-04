@@ -29,7 +29,25 @@ pub fn parse_hall_symbol(input: &str) -> Result<HallSymbolNotation, HallParseErr
     ))
 }
 
-fn restore_information_in_matrix_symbols(symbols_vec: &mut [MatrixSymbol]) {
+/// Apply the implied-axis rules of the Hall notation to a list of matrix
+/// symbols.
+///
+/// For most Hall symbols the rotation axes are implied by the position of
+/// each symbol, so an explicit axis symbol is not written. This function
+/// restores the missing axis information. The rules it applies are:
+///
+/// - The first rotation gets the `c` axis (`RotationAxis::Z`) when its axis
+///   was omitted.
+/// - The second rotation, when its N is 2, gets the `a` axis
+///   (`RotationAxis::X`) if the first N is 2 or 4. If the first N is 3 or 6,
+///   it gets the `c` axis (`RotationAxis::Z`, the `a-b` direction), and the
+///   single-quote diagnostic is added when the symbol carries none.
+/// - The third rotation, when its N is 3, gets the asterisk diagnostic: its
+///   axis is the `a+b+c` body diagonal.
+///
+/// Call this on a hand-built list of [`MatrixSymbol`] to apply the same
+/// rules the parse path applies.
+pub fn restore_information_in_matrix_symbols(symbols_vec: &mut [MatrixSymbol]) {
     // For most Hall symbols the rotation axes applicable to each N are implied and an explicit axis symbol A is not needed. The rules for default axis directions are:
     // the first rotation has an axis direction of c
     // the second rotation (if N is 2) has an axis direction of

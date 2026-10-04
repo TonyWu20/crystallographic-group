@@ -28,6 +28,7 @@ mod translation_symbol;
 pub use errors::HallParseError;
 pub use general_positions::GeneralPositions;
 pub use matrix_symbol::SeitzMatrix;
+pub use parser::restore_information_in_matrix_symbols;
 
 pub(crate) const SEITZ_TRANSLATE_BASE_NUMBER: i32 = 12;
 
