@@ -4,7 +4,6 @@ use std::{
 };
 
 use nalgebra::{Matrix3, Vector3};
-use winnow::ModalResult;
 
 use crate::{
     database::{SpaceGroupHallSymbol, ORDER_12, ORDER_24, ORDER_48},
@@ -18,6 +17,7 @@ use self::{
     parser::parse_hall_symbol,
 };
 
+mod errors;
 mod general_positions;
 mod lattice_symbol;
 mod matrix_symbol;
@@ -25,6 +25,7 @@ mod origin_shift;
 mod parser;
 mod translation_symbol;
 
+pub use errors::HallParseError;
 pub use general_positions::GeneralPositions;
 pub use matrix_symbol::SeitzMatrix;
 
@@ -53,9 +54,8 @@ impl HallSymbolNotation {
             origin_shift,
         }
     }
-    pub fn try_from_str(input: &str) -> ModalResult<Self> {
-        let mut input = input;
-        parse_hall_symbol(&mut input)
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+        parse_hall_symbol(input)
     }
 
     fn num_generators(&self) -> usize {

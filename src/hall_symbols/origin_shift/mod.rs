@@ -1,15 +1,16 @@
 use std::{fmt::Display, ops::Neg};
 
 use nalgebra::{Matrix4, Vector4};
-use winnow::ModalResult;
 
-use crate::utils::positive_mod_stbn_i32;
+use crate::{hall_symbols::errors::HallParseError, utils::positive_mod_stbn_i32};
 
 use self::parser::parse_origin_shift;
 
 use super::{matrix_symbol::SeitzMatrix, SEITZ_TRANSLATE_BASE_NUMBER};
 
 mod parser;
+
+pub(crate) use parser::origin_shift;
 
 pub const CHANGE_OF_BASIS_BASE_NUMBER: i32 = 72;
 
@@ -27,8 +28,8 @@ impl Default for OriginShift {
 }
 
 impl OriginShift {
-    pub fn try_from_str(input: &mut &str) -> ModalResult<Self> {
-        parse_origin_shift(input)
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+        parse_origin_shift(input).map_err(|errors| HallParseError::new(input, errors))
     }
 
     pub fn new(va: i32, vb: i32, vc: i32) -> Self {

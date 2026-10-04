@@ -11,7 +11,8 @@ license = "MIT"
 
 [dependencies]
 nalgebra = "0.33.0"
-winnow = "0.7.6"
+chumsky = "0.13"
+ariadne = { version = "0.6", features = ["auto-color"] }
 fraction = "0.15.3"
 
 [dev-dependencies]

@@ -1,22 +1,29 @@
-use winnow::ModalResult;
+use chumsky::{IterParser, Parser};
 
 use crate::hall_symbols::{
-    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag},
-    origin_shift::OriginShift,
+    errors::HallParseError,
+    matrix_symbol::{MatrixSymbol, NFold, NFoldDiag, RotationAxis},
 };
 
-use super::{lattice_symbol::LatticeSymbol, matrix_symbol::RotationAxis, HallSymbolNotation};
+use super::{
+    lattice_symbol::lattice_symbol,
+    matrix_symbol::matrix_symbol,
+    origin_shift::origin_shift,
+    HallSymbolNotation,
+};
 
-pub fn parse_hall_symbol(input: &mut &str) -> ModalResult<HallSymbolNotation> {
-    let lattice_symbol = LatticeSymbol::try_from_str(input)?;
-    let mut matrix_symbols: Vec<MatrixSymbol> = Vec::new();
-    while let Ok(symbol) = MatrixSymbol::try_from_str(input) {
-        matrix_symbols.push(symbol);
-    }
-    let origin_shift = OriginShift::try_from_str(input)?;
+/// Parse a full Hall symbol notation:
+/// lattice symbol, then repeated matrix symbols, then an optional origin shift.
+pub fn parse_hall_symbol(input: &str) -> Result<HallSymbolNotation, HallParseError<'_>> {
+    let ((lattice, mut matrix_symbols), origin_shift) = lattice_symbol()
+        .then(matrix_symbol().repeated().collect::<Vec<MatrixSymbol>>())
+        .then(origin_shift())
+        .parse(input)
+        .into_result()
+        .map_err(|errors| HallParseError::new(input, errors))?;
     restore_information_in_matrix_symbols(&mut matrix_symbols);
     Ok(HallSymbolNotation::new(
-        lattice_symbol,
+        lattice,
         matrix_symbols,
         origin_shift,
     ))

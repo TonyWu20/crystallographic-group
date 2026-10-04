@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use self::parser::parse_hall_matrix_symbol;
 
-use super::translation_symbol::TranslationSymbol;
+use crate::hall_symbols::{errors::HallParseError, translation_symbol::TranslationSymbol};
 
 mod builder;
 mod matrices;
@@ -12,7 +12,8 @@ mod parser;
 pub use builder::MatrixSymbolBuilder;
 pub use matrices::SeitzMatrix;
 pub use notations::*;
-use winnow::ModalResult;
+
+pub(crate) use parser::matrix_symbol;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MatrixSymbol {
@@ -50,8 +51,8 @@ impl Display for MatrixSymbol {
 }
 
 impl MatrixSymbol {
-    pub fn try_from_str(input: &mut &str) -> ModalResult<Self> {
-        parse_hall_matrix_symbol(input)
+    pub fn try_from_str(input: &str) -> Result<Self, HallParseError<'_>> {
+        parse_hall_matrix_symbol(input).map_err(|errors| HallParseError::new(input, errors))
     }
 
     pub fn new_builder() -> MatrixSymbolBuilder {
@@ -147,7 +148,7 @@ mod test {
         let m2 = m2yd.seitz_matrix().unwrap() * m2z.seitz_matrix().unwrap();
         println!("{}", m2);
         println!("{}", m2yd.seitz_matrix().unwrap() * m1);
-        let mut m3 = MatrixSymbol::try_from_str(&mut "2\"").unwrap();
+        let mut m3 = MatrixSymbol::try_from_str("2\"").unwrap();
         m3.set_rotation_axis(RotationAxis::Z);
         println!("{}", m3);
         println!("{}", m3.seitz_matrix().unwrap());
