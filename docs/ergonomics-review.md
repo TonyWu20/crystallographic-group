@@ -292,6 +292,22 @@ cubic.
 
 All findings 1 to 20 are closed.
 
+## D5 incident: the 24-hour hang guard false positive (2026-10-05)
+
+The one-shot 24 h timer in `sessions/bon-builder/notify.sh` poked this
+session with "bon-builder still running after 24h". The premise was
+wrong. The `poked` marker that guard checks was never written. The
+wake arrived through the D5 chain form, and that path pokes the main
+session directly. It never creates the notify.sh marker.
+
+The bon-builder loop exited at 10:30 on 2026-10-04. Its status is
+`done`, and the stop kind is complete. The main session closed out D4
+at that time.
+
+State verified on 2026-10-05: all recorded PIDs are dead. No live
+process belongs to the queue. The guard is a one-shot that has
+exited. The stale PID files of the finished sessions are removed.
+
 ## Findings pass outcome
 
 - Finding 3 is closed. `MatrixSymbolError` owns a `MatrixSymbol` and has
